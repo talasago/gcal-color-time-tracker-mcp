@@ -111,7 +111,62 @@ docker run -d \
 docker logs -f calendar-color-mcp
 ```
 
-### Claude での使用例
+### Claude Desktop での使用例
+
+#### Claude Desktop 設定 (claude_desktop_config.json)
+
+```json
+{
+  "mcpServers": {
+    "calendar-color-mcp": {
+      "command": "/path/to/calendar-color-mcp/bin/calendar-color-mcp",
+      "env": {
+        "GOOGLE_CLIENT_ID": "your_google_client_id",
+        "GOOGLE_CLIENT_SECRET": "your_google_client_secret"
+      }
+    }
+  }
+}
+```
+
+#### Docker使用時の設定
+
+```json
+{
+  "mcpServers": {
+    "calendar-color-mcp": {
+      "command": "docker",
+      "args": [
+        "exec",
+        "calendar-color-mcp",
+        "/app/bin/calendar-color-mcp"
+      ]
+    }
+  }
+}
+```
+
+#### Cursor での使用例
+
+#### .cursor-settings.json 設定
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "calendar-color-mcp": {
+        "command": "/path/to/calendar-color-mcp/bin/calendar-color-mcp",
+        "env": {
+          "GOOGLE_CLIENT_ID": "your_google_client_id", 
+          "GOOGLE_CLIENT_SECRET": "your_google_client_secret"
+        }
+      }
+    }
+  }
+}
+```
+
+### MCPツール使用例
 
 #### カレンダー分析
 
