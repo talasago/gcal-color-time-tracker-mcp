@@ -28,50 +28,6 @@ bundle exec rspec spec/specific_test.rb  # Run single test file
 bundle exec pry            # Interactive Ruby console for debugging
 ```
 
-### Docker Commands
-
-#### Build and Run with Docker Compose
-```bash
-# Setup environment for Docker
-cp .env.docker .env        # Copy Docker environment template
-# Edit .env with your Google OAuth credentials
-
-# Build and run in production mode
-docker-compose up --build
-
-# Run in development mode with live reloading
-docker-compose --profile dev up --build calendar-color-mcp-dev
-
-# Run in background
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
-
-#### Direct Docker Commands
-```bash
-# Build image
-docker build -t calendar-color-mcp .
-
-# Run container
-docker run -d \
-  --name calendar-color-mcp \
-  --network host \
-  -v $(pwd)/user_tokens:/app/user_tokens \
-  -v $(pwd)/.env:/app/.env:ro \
-  calendar-color-mcp
-
-# View logs
-docker logs -f calendar-color-mcp
-
-# Stop container
-docker stop calendar-color-mcp
-docker rm calendar-color-mcp
-```
 
 ## Architecture Overview
 

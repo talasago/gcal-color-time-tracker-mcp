@@ -57,60 +57,6 @@ chmod +x bin/calendar-color-mcp
 ./bin/calendar-color-mcp
 ```
 
-### Dockerでの実行
-
-#### 1. Docker環境のセットアップ
-
-```bash
-# Docker用環境変数ファイルをコピー
-cp .env.docker .env
-
-# .envファイルを編集してGoogle OAuth認証情報を設定
-# GOOGLE_CLIENT_ID=your_google_client_id
-# GOOGLE_CLIENT_SECRET=your_google_client_secret
-```
-
-#### 2. Docker Composeで起動
-
-```bash
-# ビルドして起動
-docker-compose up --build
-
-# バックグラウンドで起動
-docker-compose up -d
-
-# ログを確認
-docker-compose logs -f
-
-# 停止
-docker-compose down
-```
-
-#### 3. 開発モードでの起動
-
-```bash
-# 開発モード（ライブリロード付き）
-docker-compose --profile dev up --build calendar-color-mcp-dev
-```
-
-#### 4. 直接Dockerコマンドで起動
-
-```bash
-# イメージをビルド
-docker build -t calendar-color-mcp .
-
-# コンテナを起動
-docker run -d \
-  --name calendar-color-mcp \
-  --network host \
-  -v $(pwd)/user_tokens:/app/user_tokens \
-  -v $(pwd)/.env:/app/.env:ro \
-  calendar-color-mcp
-
-# ログを確認
-docker logs -f calendar-color-mcp
-```
-
 ### Claude Desktop での使用例
 
 #### Claude Desktop 設定 (claude_desktop_config.json)
@@ -124,23 +70,6 @@ docker logs -f calendar-color-mcp
         "GOOGLE_CLIENT_ID": "your_google_client_id",
         "GOOGLE_CLIENT_SECRET": "your_google_client_secret"
       }
-    }
-  }
-}
-```
-
-#### Docker使用時の設定
-
-```json
-{
-  "mcpServers": {
-    "calendar-color-mcp": {
-      "command": "docker",
-      "args": [
-        "exec",
-        "calendar-color-mcp",
-        "/app/bin/calendar-color-mcp"
-      ]
     }
   }
 }
