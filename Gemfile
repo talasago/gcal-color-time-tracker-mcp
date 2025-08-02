@@ -10,4 +10,5 @@ gem 'fileutils'
 group :development, :test do
   gem 'rspec'
   gem 'pry'
+  gem 'solargraph'
 end
