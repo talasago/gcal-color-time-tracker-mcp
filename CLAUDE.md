@@ -31,11 +31,15 @@ bundle exec pry            # Interactive Ruby console for debugging
 
 ## Architecture Overview
 
-This is an **MCP (Model Context Protocol) server** built with the `mcp-rb` framework that provides Google Calendar color-based time analytics. The architecture follows a modular design with clear separation of concerns:
+This is an **MCP (Model Context Protocol) server** built with the official **`mcp` Ruby SDK** that provides Google Calendar color-based time analytics. The architecture follows a modular design with clear separation of concerns:
 
 ### Core Components
 
-- **`CalendarColorMCP::Server`** (lib/calendar_color_mcp/server.rb): Main MCP server class that inherits from `MCP::Server`, handles tool registration and request routing
+- **`CalendarColorMCP::Server`** (lib/calendar_color_mcp/server.rb): Main MCP server class that uses `MCP::Server` and `StdioTransport`, handles tool registration and request routing
+- **Tool Classes** (lib/calendar_color_mcp/tools/): Class-based MCP tool implementations
+  - `AnalyzeCalendarTool`: Main calendar analysis functionality
+  - `StartAuthTool`: OAuth authentication initiation
+  - `CheckAuthStatusTool`: Authentication status validation
 - **`GoogleCalendarClient`**: Handles Google Calendar API interactions and OAuth token management
 - **`TimeAnalyzer`**: Core business logic for analyzing calendar events by color and calculating time summaries
 - **`UserManager`**: File-based user credential storage and management (no database required)
@@ -43,14 +47,12 @@ This is an **MCP (Model Context Protocol) server** built with the `mcp-rb` frame
 
 ### MCP Protocol Implementation
 
-The server exposes **3 tools** via the MCP protocol:
-- `analyze_calendar`: Main analysis tool (requires user_id, start_date, end_date)
-- `start_auth`: Initiates OAuth flow for new users  
-- `check_auth_status`: Validates user authentication state
+The server exposes **3 tools** via the MCP protocol (implemented as class-based tools):
+- `AnalyzeCalendarTool`: Main analysis tool (requires user_id, start_date, end_date)
+- `StartAuthTool`: Initiates OAuth flow for new users  
+- `CheckAuthStatusTool`: Validates user authentication state
 
-The server provides **2 resources**:
-- `auth://users`: JSON list of all users and their auth status
-- `calendar://colors`: Google Calendar color ID to name mappings
+**Note**: Resources (`auth://users`, `calendar://colors`) are planned for future implementation in the new SDK.
 
 ### Authentication Flow
 
@@ -61,6 +63,9 @@ Uses **file-based token storage** in `user_tokens/` directory:
 
 ### Key Design Patterns
 
+- **Official MCP SDK Integration**: Uses official `mcp` gem with `StdioTransport` for command-line MCP server
+- **Class-based Tool Architecture**: Each MCP tool implemented as separate class inheriting from `MCP::Tool`
+- **Server Context Sharing**: User and auth managers shared across tools via `server_context`
 - **OAuth 2.0 OOB (out-of-band) flow**: CLI-friendly authentication without local web server
 - **Modular separation**: Each major concern (auth, calendar, analysis, users) in separate classes
 - **Error boundary handling**: Google API authorization errors are caught and trigger re-auth flow

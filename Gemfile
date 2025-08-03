@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'mcp-rb'
+gem 'mcp'
 gem 'google-api-client'
 gem 'dotenv'
 gem 'json'
