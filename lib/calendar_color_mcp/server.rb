@@ -9,13 +9,12 @@ module CalendarColorMCP
     def initialize
       super(
         name: "calendar-color-analytics",
-        version: "1.0.0",
-        description: "Google Calendar color-based time analytics MCP server"
+        version: "1.0.0"
       )
-      
+
       @user_manager = UserManager.new
       @auth_manager = AuthManager.new
-      
+
       setup_tools
       setup_resources
     end
@@ -24,97 +23,62 @@ module CalendarColorMCP
 
     def setup_tools
       # カレンダー分析ツール
-      add_tool(
-        name: "analyze_calendar",
-        description: "指定期間のGoogleカレンダーイベントを色別に時間集計します",
-        parameters: {
-          type: "object",
-          properties: {
-            user_id: {
-              type: "string",
-              description: "ユーザーID（認証に使用）"
-            },
-            start_date: {
-              type: "string",
-              pattern: "^\\d{4}-\\d{2}-\\d{2}$",
-              description: "開始日（YYYY-MM-DD形式）"
-            },
-            end_date: {
-              type: "string", 
-              pattern: "^\\d{4}-\\d{2}-\\d{2}$",
-              description: "終了日（YYYY-MM-DD形式）"
-            }
-          },
-          required: ["user_id", "start_date", "end_date"]
-        }
-      ) do |params|
-        handle_analyze_calendar(params)
+      tool "analyze_calendar" do
+        description "指定期間のGoogleカレンダーイベントを色別に時間集計します"
+        argument :user_id, String, required: true, description: "ユーザーID（認証に使用）"
+        argument :start_date, String, required: true, description: "開始日（YYYY-MM-DD形式）"
+        argument :end_date, String, required: true, description: "終了日（YYYY-MM-DD形式）"
+        call do |args|
+          handle_analyze_calendar(args)
+        end
       end
 
       # 認証開始ツール
-      add_tool(
-        name: "start_auth",
-        description: "Google Calendar認証を開始します",
-        parameters: {
-          type: "object",
-          properties: {
-            user_id: {
-              type: "string",
-              description: "ユーザーID"
-            }
-          },
-          required: ["user_id"]
-        }
-      ) do |params|
-        handle_start_auth(params)
+      tool "start_auth" do
+        description "Google Calendar認証を開始します"
+        argument :user_id, String, required: true, description: "ユーザーID"
+        call do |args|
+          handle_start_auth(args)
+        end
       end
 
       # 認証状態確認ツール
-      add_tool(
-        name: "check_auth_status",
-        description: "認証状態を確認します",
-        parameters: {
-          type: "object",
-          properties: {
-            user_id: {
-              type: "string",
-              description: "ユーザーID"
-            }
-          },
-          required: ["user_id"]
-        }
-      ) do |params|
-        handle_check_auth_status(params)
+      tool "check_auth_status" do
+        description "認証状態を確認します"
+        argument :user_id, String, required: true, description: "ユーザーID"
+        call do |args|
+          handle_check_auth_status(args)
+        end
       end
     end
 
     def setup_resources
       # ユーザー認証状態リソース
-      add_resource(
-        uri: "auth://users",
-        name: "User Authentication Status",
-        description: "全ユーザーの認証状態一覧",
-        mime_type: "application/json"
-      ) do
-        get_users_auth_status
+      resource "auth://users" do
+        name "User Authentication Status"
+        description "全ユーザーの認証状態一覧"
+        mime_type "application/json"
+        call do
+          get_users_auth_status
+        end
       end
 
       # カレンダー色定義リソース
-      add_resource(
-        uri: "calendar://colors",
-        name: "Calendar Colors",
-        description: "Googleカレンダーの色定義",
-        mime_type: "application/json"
-      ) do
-        get_calendar_colors
+      resource "calendar://colors" do
+        name "Calendar Colors"
+        description "Googleカレンダーの色定義"
+        mime_type "application/json"
+        call do
+          get_calendar_colors
+        end
       end
     end
 
     # ツールハンドラー
-    def handle_analyze_calendar(params)
-      user_id = params["user_id"]
-      start_date = Date.parse(params["start_date"])
-      end_date = Date.parse(params["end_date"])
+    def handle_analyze_calendar(args)
+      user_id = args[:user_id]
+      start_date = Date.parse(args[:start_date])
+      end_date = Date.parse(args[:end_date])
 
       # 認証確認
       unless @user_manager.authenticated?(user_id)
@@ -130,10 +94,10 @@ module CalendarColorMCP
       begin
         client = GoogleCalendarClient.new(user_id)
         events = client.get_events(start_date, end_date)
-        
+
         analyzer = TimeAnalyzer.new
         result = analyzer.analyze(events, start_date, end_date)
-        
+
         {
           success: true,
           user_id: user_id,
@@ -161,10 +125,10 @@ module CalendarColorMCP
       end
     end
 
-    def handle_start_auth(params)
-      user_id = params["user_id"]
+    def handle_start_auth(args)
+      user_id = args[:user_id]
       auth_url = @auth_manager.get_auth_url(user_id)
-      
+
       {
         success: true,
         user_id: user_id,
@@ -173,23 +137,23 @@ module CalendarColorMCP
       }
     end
 
-    def handle_check_auth_status(params)
-      user_id = params["user_id"]
+    def handle_check_auth_status(args)
+      user_id = args[:user_id]
       authenticated = @user_manager.authenticated?(user_id)
-      
+
       result = {
         success: true,
         user_id: user_id,
         authenticated: authenticated
       }
-      
+
       unless authenticated
         result[:auth_url] = @auth_manager.get_auth_url(user_id)
         result[:message] = "認証が必要です"
       else
         result[:message] = "認証済みです"
       end
-      
+
       result
     end
 
@@ -203,7 +167,7 @@ module CalendarColorMCP
           last_auth: @user_manager.last_auth_time(user_id)
         }
       end
-      
+
       {
         total_users: users.count,
         users: auth_status
@@ -217,32 +181,32 @@ module CalendarColorMCP
     # ヘルパーメソッド
     def format_analysis_output(user_id, result)
       output = ["📊 #{user_id} の色別時間集計結果:", "=" * 50, ""]
-      
+
       result[:color_breakdown].each do |color_name, data|
         hours = data[:total_hours]
         minutes = ((hours % 1) * 60).round
-        
+
         output << "🎨 #{color_name}:"
         output << "  時間: #{hours.to_i}時間#{minutes}分"
         output << "  イベント数: #{data[:event_count]}件"
-        
+
         if data[:events].any?
           main_events = data[:events].first(3).map { |e| e[:title] }.join(", ")
           output << "  主なイベント: #{main_events}"
         end
         output << ""
       end
-      
+
       summary = result[:summary]
       output << "📈 サマリー:"
       output << "  総時間: #{summary[:total_hours]}時間"
       output << "  総イベント数: #{summary[:total_events]}件"
-      
+
       if summary[:most_used_color]
         most_used = summary[:most_used_color]
         output << "  最も使用された色: #{most_used[:name]} (#{most_used[:hours]}時間、#{most_used[:percentage]}%)"
       end
-      
+
       output.join("\n")
     end
   end
