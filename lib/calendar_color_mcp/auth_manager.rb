@@ -1,5 +1,8 @@
 require 'google/apis/calendar_v3'
 require 'googleauth'
+require 'googleauth/stores/file_token_store'
+require 'ostruct'
+require 'cgi'
 
 module CalendarColorMCP
   class AuthManager
@@ -11,26 +14,30 @@ module CalendarColorMCP
     end
 
     def get_auth_url(user_id)
-      client_id = Google::Auth::ClientId.new(
-        ENV['GOOGLE_CLIENT_ID'],
-        ENV['GOOGLE_CLIENT_SECRET']
-      )
+      client_id = ENV['GOOGLE_CLIENT_ID']
+      scope = SCOPE
+      redirect_uri = REDIRECT_URI
       
-      authorizer = Google::Auth::WebUserAuthorizer.new(
-        client_id, 
-        [SCOPE], 
-        Google::Auth::Stores::FileTokenStore.new(file: '/dev/null'),  # 一時的
-        REDIRECT_URI
-      )
+      # OAuth2の認証URLを直接構築
+      params = {
+        'client_id' => client_id,
+        'redirect_uri' => redirect_uri,
+        'scope' => scope,
+        'response_type' => 'code',
+        'access_type' => 'offline',
+        'prompt' => 'consent',
+        'login_hint' => user_id
+      }
       
-      url = authorizer.get_authorization_url(login_hint: user_id)
-      
+      query_string = params.map { |k, v| "#{k}=#{CGI.escape(v.to_s)}" }.join('&')
+      url = "https://accounts.google.com/o/oauth2/auth?#{query_string}"
+
       # 手動認証の説明を含むURL
       {
         url: url,
         instructions: [
           "1. 上記URLにアクセスしてください",
-          "2. Googleアカウントでログインし、権限を許可してください", 
+          "2. Googleアカウントでログインし、権限を許可してください",
           "3. 表示された認証コードをコピーしてください",
           "4. 認証コード: [ここに認証コードを貼り付けて、以下のコマンドを実行]",
           "   echo 'AUTH_CODE=<認証コード>' >> .env",
@@ -44,22 +51,22 @@ module CalendarColorMCP
         ENV['GOOGLE_CLIENT_ID'],
         ENV['GOOGLE_CLIENT_SECRET']
       )
-      
+
       authorizer = Google::Auth::WebUserAuthorizer.new(
         client_id,
         [SCOPE],
         Google::Auth::Stores::FileTokenStore.new(file: '/dev/null'),
         REDIRECT_URI
       )
-      
+
       credentials = authorizer.get_credentials_from_code(
         user_id: user_id,
         code: auth_code,
         scope: [SCOPE]
       )
-      
+
       @user_manager.save_credentials(user_id, credentials)
-      
+
       {
         success: true,
         message: "認証が完了しました",
