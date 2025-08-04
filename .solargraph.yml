@@ -1,0 +1,27 @@
+---
+include:
+- Rakefile
+- Gemfile
+- "*.gemspec"
+- "**/*.rb"
+- lib/**/*.rb
+exclude:
+- spec/**/*
+- test/**/*
+- vendor/**/*
+- ".bundle/**/*"
+require:
+- lib/calendar_color_mcp.rb
+domains: []
+reporters:
+- rubocop
+- require_not_found
+formatter:
+  rubocop:
+    cops: safe
+    except: []
+    only: []
+    extra_args: []
+require_paths: []
+plugins: []
+max_files: 5000
