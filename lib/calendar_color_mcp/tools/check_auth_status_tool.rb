@@ -6,38 +6,44 @@ module CalendarColorMCP
     
     input_schema(
       type: "object",
-      properties: {
-        user_id: {
-          type: "string",
-          description: "ユーザーID"
-        }
-      },
-      required: ["user_id"]
+      properties: {},
+      required: []
     )
 
-    def self.call(user_id:, server_context: {})
-      user_manager = server_context[:user_manager]
-      auth_manager = server_context[:auth_manager]
+    class << self
+      def call(**context)
+        server_context = context[:server_context]
+        auth_manager = server_context&.dig(:auth_manager)
       
-      authenticated = user_manager.authenticated?(user_id)
+        unless auth_manager
+          return MCP::Tool::Response.new([{
+            type: "text",
+            text: {
+              success: false,
+              error: "認証マネージャーが利用できません"
+            }.to_json
+          }])
+        end
 
-      result = {
-        success: true,
-        user_id: user_id,
-        authenticated: authenticated
-      }
+        authenticated = auth_manager.authenticated?
 
-      unless authenticated
-        result[:auth_url] = auth_manager.get_auth_url(user_id)
-        result[:message] = "認証が必要です"
-      else
-        result[:message] = "認証済みです"
+        result = {
+          success: true,
+          authenticated: authenticated
+        }
+
+        unless authenticated
+          result[:auth_url] = auth_manager.get_auth_url
+          result[:message] = "認証が必要です"
+        else
+          result[:message] = "認証済みです"
+        end
+
+        MCP::Tool::Response.new([{
+          type: "text",
+          text: result.to_json
+        }])
       end
-
-      MCP::Tool::Response.new([{
-        type: "text",
-        text: result.to_json
-      }])
     end
   end
 end

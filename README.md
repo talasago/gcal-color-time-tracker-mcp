@@ -7,6 +7,8 @@ mcp-rbフレームワークを使用したGoogleカレンダーの色別時間�
 ## 機能
 
 - **色別時間集計**: 指定期間のカレンダーイベントを色毎に時間集計
+- **参加イベントのみ集計**: 承諾したイベント、主催イベント、プライベートイベントのみ分析対象
+- **色フィルタリング**: 特定の色のみを集計対象にしたり、特定の色を除外したりが可能
 - **MCPツール**: `analyze_calendar` ツールで分析実行
 - **MCPリソース**: 認証状態やユーザー情報をリソースとして提供
 - **複数ユーザー対応**: データベースを使わずにローカルファイルで管理
@@ -75,49 +77,55 @@ chmod +x bin/calendar-color-mcp
 }
 ```
 
-#### Cursor での使用例
-
-#### .cursor-settings.json 設定
-
-```json
-{
-  "mcp": {
-    "servers": {
-      "calendar-color-mcp": {
-        "command": "/path/to/calendar-color-mcp/bin/calendar-color-mcp",
-        "env": {
-          "GOOGLE_CLIENT_ID": "your_google_client_id", 
-          "GOOGLE_CLIENT_SECRET": "your_google_client_secret"
-        }
-      }
-    }
-  }
-}
-```
-
 ### MCPツール使用例
 
-#### カレンダー分析
+#### カレンダー分析（参加イベントのみ）
 
+基本的な使用例：
 ```json
 {
   "name": "analyze_calendar",
   "arguments": {
-    "user_id": "tanaka",
     "start_date": "2024-07-01",
     "end_date": "2024-07-07"
   }
 }
 ```
 
+色フィルタリング使用例：
+```json
+{
+  "name": "analyze_calendar", 
+  "arguments": {
+    "start_date": "2024-07-01",
+    "end_date": "2024-07-07",
+    "include_colors": ["緑", "青", 1, "オレンジ"],
+    "exclude_colors": ["灰色", 11]
+  }
+}
+```
+
+**分析対象となるイベント：**
+- ユーザーが主催者のイベント
+- 招待を承諾したイベント（`responseStatus: "accepted"`）
+- 参加者情報のないプライベートイベント
+
+**除外されるイベント：**
+- 辞退したイベント（`responseStatus: "declined"`）
+- 仮承諾のイベント（`responseStatus: "tentative"`）
+- 未応答のイベント（`responseStatus: "needsAction"`）
+
+**色フィルタリングパラメータ：**
+- `include_colors`: 集計対象の色（色ID(1-11)またはカラー名）
+- `exclude_colors`: 集計除外の色（色ID(1-11)またはカラー名）
+- 色IDとカラー名の混在指定可能
+- exclude_colorsがinclude_colorsより優先
+
 #### 認証開始
 
 ```json
 {
   "name": "start_auth",
-  "arguments": {
-    "user_id": "tanaka"
-  }
 }
 ```
 
@@ -126,15 +134,10 @@ chmod +x bin/calendar-color-mcp
 ```json
 {
   "name": "check_auth_status",
-  "arguments": {
-    "user_id": "tanaka"
-  }
 }
 ```
 
 ### リソース参照
-
-- **全ユーザーの認証状態**: `auth://users`
 - **カレンダー色定義**: `calendar://colors`
 
 ## プロジェクト構成
@@ -151,7 +154,6 @@ calendar-color-mcp/
 │   │   └── auth_manager.rb            # 認証管理
 ├── bin/
 │   └── calendar-color-mcp             # 実行可能ファイル
-├── user_tokens/                       # トークン保存
 ├── Gemfile
 ├── .env.example
 ├── calendar_color_mcp.gemspec
@@ -179,28 +181,8 @@ calendar-color-mcp/
 1. 初回使用時は認証が必要
 2. `start_auth`ツールまたは`analyze_calendar`実行時に認証URLが提供される
 3. URLにアクセスしてGoogle認証を完了
-4. 認証情報は暗号化されてローカルファイルに保存
+4. 認証情報は暗号化されてローカルファイルに保存???
 5. リフレッシュトークンにより再認証頻度を最小化
-
-## トラブルシューティング
-
-### 認証エラー
-
-- Google Cloud Consoleでカレンダー API が有効化されているか確認
-- 環境変数が正しく設定されているか確認
-- トークンファイル（`user_tokens/`）を削除して再認証
-
-### 依存関係エラー
-
-```bash
-bundle install
-```
-
-### 権限エラー
-
-```bash
-chmod +x bin/calendar-color-mcp
-```
 
 ## 開発・テスト
 
