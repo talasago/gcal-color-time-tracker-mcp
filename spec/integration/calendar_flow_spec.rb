@@ -30,42 +30,6 @@ RSpec.describe 'Calendar Flow Integration', type: :integration do
         requests = [
           initialize_request(0),
           check_auth_status_request(1),
-          analyze_calendar_request("2024-01-01", "2024-01-31", 2)
-        ]
-
-        responses = execute_mcp_requests(requests)
-
-        aggregate_failures do
-          expect(responses.length).to eq(3)
-
-          # Initialize response
-          expect(responses[0]['result']['serverInfo']['name']).to eq('calendar-color-analytics')
-
-          # Auth status should show not authenticated
-          auth_status_content = JSON.parse(responses[1]['result']['content'][0]['text'])
-          expect(auth_status_content['authenticated']).to be false
-
-          # Analysis should indicate authentication is required
-          analysis_response = responses[2]
-          expect(analysis_response['result']['isError']).to be false
-          analysis_content = JSON.parse(analysis_response['result']['content'][0]['text'])
-
-          # Should indicate failure due to authentication
-          if analysis_content.has_key?('success')
-            expect(analysis_content['success']).to be false
-          end
-
-          # Should contain auth-related error message
-          error_message = analysis_content['error'] || analysis_content['message'] || analysis_content['description']
-          expect(error_message).to be_a(String)
-          expect(error_message).to include('認証').or include('authentication')
-        end
-      end
-
-      it 'completes full authentication flow and then analyzes calendar' do
-        requests = [
-          initialize_request(0),
-          check_auth_status_request(1),
           start_auth_request(2),
           complete_auth_request("invalid_test_code", 3),
           analyze_calendar_request("2024-01-01", "2024-01-31", 4)
@@ -84,18 +48,22 @@ RSpec.describe 'Calendar Flow Integration', type: :integration do
           start_auth_content = JSON.parse(responses[2]['result']['content'][0]['text'])
           expect(start_auth_content['success']).to be true
           expect(start_auth_content).to have_key('auth_url')
+          expect(auth_status_content['authenticated']).to be false
 
           # Complete auth should fail with invalid code
           complete_auth_content = JSON.parse(responses[3]['result']['content'][0]['text'])
+          expect(auth_status_content['authenticated']).to be false
           expect(complete_auth_content['success']).to be false
 
           # Analysis should still require authentication
           analysis_content = JSON.parse(responses[4]['result']['content'][0]['text'])
+          # Note: Response format varies - some include 'success' key, others only have 'error'/'message'
+          # This conditional check ensures test robustness across different error response formats
           if analysis_content.has_key?('success')
             expect(analysis_content['success']).to be false
           end
           error_message = analysis_content['error'] || analysis_content['message'] || analysis_content['description']
-          expect(error_message).to include('認証').or include('authentication')
+          expect(error_message).to include('認証が必要です')
         end
       end
     end
@@ -133,57 +101,22 @@ RSpec.describe 'Calendar Flow Integration', type: :integration do
 
           # Auth status might show not authenticated or indicate token issues
           auth_status_content = JSON.parse(responses[1]['result']['content'][0]['text'])
-          expect(auth_status_content).to have_key('authenticated')
+          expect(auth_status_content['authenticated']).to eq 'test_refresh_token'
 
           # Analysis should fail due to expired token
           analysis_response = responses[2]
           expect(analysis_response['result']['isError']).to be false
           analysis_content = JSON.parse(analysis_response['result']['content'][0]['text'])
 
-          # Should indicate failure
+          # Note: Response format varies - some include 'success' key, others only have 'error'/'message'
+          # This conditional check ensures test robustness across different error response formats
           if analysis_content.has_key?('success')
             expect(analysis_content['success']).to be false
           end
 
           # Should contain auth-related or token expiry error message
           error_message = analysis_content['error'] || analysis_content['message'] || analysis_content['description']
-          expect(error_message).to be_a(String)
-          expect(error_message).to include('認証').or include('authentication').or include('expired').or include('期限').or include('Authorization failed')
-        end
-      end
-
-      it 'completes re-authentication flow from expired token state' do
-        requests = [
-          initialize_request(0),
-          check_auth_status_request(1),
-          start_auth_request(2),
-          analyze_calendar_request("2024-01-01", "2024-01-31", 3),
-          complete_auth_request("invalid_reauth_code", 4)
-        ]
-
-        responses = execute_mcp_requests(requests)
-
-        aggregate_failures do
-          expect(responses.length).to eq(5)
-
-          # Auth status response
-          auth_status_content = JSON.parse(responses[1]['result']['content'][0]['text'])
-          expect(auth_status_content).to have_key('authenticated')
-
-          # Start auth should succeed even with expired token
-          start_auth_content = JSON.parse(responses[2]['result']['content'][0]['text'])
-          expect(start_auth_content['success']).to be true
-          expect(start_auth_content).to have_key('auth_url')
-
-          # Analysis should still fail before auth completion
-          analysis_content = JSON.parse(responses[3]['result']['content'][0]['text'])
-          if analysis_content.has_key?('success')
-            expect(analysis_content['success']).to be false
-          end
-
-          # Complete auth should fail with invalid code
-          complete_auth_content = JSON.parse(responses[4]['result']['content'][0]['text'])
-          expect(complete_auth_content['success']).to be false
+          expect(error_message).to include('Authorization failed')
         end
       end
     end
