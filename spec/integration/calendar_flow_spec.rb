@@ -1,28 +1,9 @@
 require 'spec_helper'
-require 'json'
-require 'open3'
 
 RSpec.describe 'Calendar Flow Integration', type: :integration do
-  let(:server_command) { './bin/calendar-color-mcp' }
+  include MCPRequestHelpers
+
   let(:timeout_duration) { 5 }
-
-  def execute_mcp_requests(requests)
-    requests_json = requests.map(&:to_json).join("\n")
-
-    stdout, stderr, status = Open3.capture3(
-      "echo '#{requests_json}' | timeout #{timeout_duration} #{server_command}"
-    )
-
-    begin
-      responses = stdout.strip.split("\n").map { |line| JSON.parse(line) }
-    rescue JSON::ParserError => e
-      puts "stdout: #{stdout}"
-      puts "stderr: #{stderr}"
-      raise "Failed to parse JSON responses: #{e.message}"
-    end
-
-    responses
-  end
 
   describe 'calendar analysis authentication patterns' do
     # NOTE: Test case for 'when user has valid authentication token' is not implemented

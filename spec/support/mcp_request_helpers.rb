@@ -1,4 +1,27 @@
+require 'open3'
+require 'json'
+
 module MCPRequestHelpers
+  def execute_mcp_requests(requests, timeout = 5, server_command = './bin/calendar-color-mcp')
+    requests_json = requests.map(&:to_json).join("\n")
+
+    stdout, stderr, _status = Open3.capture3(
+      "echo '#{requests_json}' | timeout #{timeout} #{server_command}"
+    )
+
+    begin
+      # Handle JSON parsing with detailed error info for test debugging
+      # server execution may produce unexpected output that needs investigation
+      responses = stdout.strip.split("\n").map { |line| JSON.parse(line) }
+    rescue JSON::ParserError => e
+      puts "stdout: #{stdout}"
+      puts "stderr: #{stderr}"
+      raise "Failed to parse JSON responses: #{e.message}"
+    end
+
+    responses
+  end
+
   def initialize_request(id = 0)
     {
       method: "initialize",

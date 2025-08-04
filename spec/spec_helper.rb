@@ -1,5 +1,6 @@
 require 'rspec'
 require 'dotenv/load'
+require_relative 'support/mcp_request_helpers'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

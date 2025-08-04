@@ -1,29 +1,15 @@
 require 'spec_helper'
-require 'json'
-require 'open3'
 
 # typeはintegrationが正しいのか？
 RSpec.describe 'MCP Standard Protocol', type: :integration do
-  let(:server_command) { './bin/calendar-color-mcp' }
+  include MCPRequestHelpers
+
   let(:timeout_duration) { 3 }
 
   describe 'MCP Protocol initialization' do
     it 'responds to initialize request with 2025-06-18 protocol version' do
-      request = initialize_request.to_json
-
-      stdout, stderr, status = Open3.capture3(
-        "echo '#{request}' | timeout #{timeout_duration} #{server_command}"
-      )
-
-      # Handle JSON parsing with detailed error info for test debugging
-      # server execution may produce unexpected output that needs investigation
-      begin
-        response = JSON.parse(stdout.strip)
-      rescue JSON::ParserError => e
-        puts "stdout: #{stdout}"
-        puts "stderr: #{stderr}"
-        raise "Failed to parse JSON response: #{e.message}"
-      end
+      responses = execute_mcp_requests([initialize_request], timeout_duration)
+      response = responses[0]
 
       aggregate_failures do
         expect(response['jsonrpc']).to eq('2.0')
@@ -40,24 +26,12 @@ RSpec.describe 'MCP Standard Protocol', type: :integration do
 
   describe 'Tools list endpoint' do
     it 'returns all available tools with correct schema' do
-      init_request = initialize_request.to_json
-      list_request = tools_list_request.to_json
-      requests_sequence = [init_request, list_request].join("\n")
+      requests = [
+        initialize_request,
+        tools_list_request
+      ]
 
-      stdout, stderr, status = Open3.capture3(
-        "echo '#{requests_sequence}' | timeout #{timeout_duration} #{server_command}"
-      )
-
-      # Handle JSON parsing with detailed error info for test debugging
-      # server execution may produce unexpected output that needs investigation
-      begin
-        responses = stdout.strip.split("\n").map { |line| JSON.parse(line) }
-      rescue JSON::ParserError => e
-        puts "stdout: #{stdout}"
-        puts "stderr: #{stderr}"
-        raise "Failed to parse JSON responses: #{e.message}"
-      end
-
+      responses = execute_mcp_requests(requests, timeout_duration)
       list_response = responses[1]
       tools = list_response['result']['tools']
 
