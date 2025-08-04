@@ -1,7 +1,6 @@
 require 'spec_helper'
 
-# typeはintegrationが正しいのか？
-RSpec.describe 'MCP Standard Protocol', type: :integration do
+RSpec.describe 'MCP Standard Protocol', type: :request do
   include MCPRequestHelpers
 
   let(:timeout_duration) { 3 }
