@@ -2,8 +2,6 @@ require 'spec_helper'
 require 'json'
 require 'open3'
 
-# requestsは共通化してDRYにできないのかな。
-
 RSpec.describe 'Calendar Flow Integration', type: :integration do
   let(:server_command) { './bin/calendar-color-mcp' }
   let(:timeout_duration) { 5 }
@@ -49,40 +47,9 @@ RSpec.describe 'Calendar Flow Integration', type: :integration do
 
       it 'returns authentication error when analyzing calendar' do
         requests = [
-          # Step 1: Initialize
-          {
-            method: "initialize",
-            params: {
-              protocolVersion: "2025-06-18",
-              capabilities: {},
-              clientInfo: { name: "claude-ai", version: "0.1.0" }
-            },
-            jsonrpc: "2.0",
-            id: 0
-          },
-          # Step 2: Check auth status (should be not authenticated)
-          {
-            method: "tools/call",
-            params: {
-              name: "check_auth_status_tool",
-              arguments: {}
-            },
-            jsonrpc: "2.0",
-            id: 1
-          },
-          # Step 3: Try calendar analysis (should fail)
-          {
-            method: "tools/call",
-            params: {
-              name: "analyze_calendar_tool",
-              arguments: {
-                start_date: "2024-01-01",
-                end_date: "2024-01-31"
-              }
-            },
-            jsonrpc: "2.0",
-            id: 2
-          }
+          initialize_request(0),
+          check_auth_status_request(1),
+          analyze_calendar_request("2024-01-01", "2024-01-31", 2)
         ]
 
         responses = execute_mcp_requests(requests)
@@ -116,62 +83,11 @@ RSpec.describe 'Calendar Flow Integration', type: :integration do
 
       it 'completes full authentication flow and then analyzes calendar' do
         requests = [
-          # Step 1: Initialize
-          {
-            method: "initialize",
-            params: {
-              protocolVersion: "2025-06-18",
-              capabilities: {},
-              clientInfo: { name: "claude-ai", version: "0.1.0" }
-            },
-            jsonrpc: "2.0",
-            id: 0
-          },
-          # Step 2: Check initial auth status
-          {
-            method: "tools/call",
-            params: {
-              name: "check_auth_status_tool",
-              arguments: {}
-            },
-            jsonrpc: "2.0",
-            id: 1
-          },
-          # Step 3: Start authentication
-          {
-            method: "tools/call",
-            params: {
-              name: "start_auth_tool",
-              arguments: {}
-            },
-            jsonrpc: "2.0",
-            id: 2
-          },
-          # Step 4: Try to complete with invalid code (simulating realistic flow)
-          {
-            method: "tools/call",
-            params: {
-              name: "complete_auth_tool",
-              arguments: {
-                auth_code: "invalid_test_code"
-              }
-            },
-            jsonrpc: "2.0",
-            id: 3
-          },
-          # Step 5: Try analysis after auth attempt (should still fail)
-          {
-            method: "tools/call",
-            params: {
-              name: "analyze_calendar_tool",
-              arguments: {
-                start_date: "2024-01-01",
-                end_date: "2024-01-31"
-              }
-            },
-            jsonrpc: "2.0",
-            id: 4
-          }
+          initialize_request(0),
+          check_auth_status_request(1),
+          start_auth_request(2),
+          complete_auth_request("invalid_test_code", 3),
+          analyze_calendar_request("2024-01-01", "2024-01-31", 4)
         ]
 
         responses = execute_mcp_requests(requests)
@@ -221,40 +137,9 @@ RSpec.describe 'Calendar Flow Integration', type: :integration do
 
       it 'returns authentication error due to expired token' do
         requests = [
-          # Step 1: Initialize
-          {
-            method: "initialize",
-            params: {
-              protocolVersion: "2025-06-18",
-              capabilities: {},
-              clientInfo: { name: "claude-ai", version: "0.1.0" }
-            },
-            jsonrpc: "2.0",
-            id: 0
-          },
-          # Step 2: Check auth status
-          {
-            method: "tools/call",
-            params: {
-              name: "check_auth_status_tool",
-              arguments: {}
-            },
-            jsonrpc: "2.0",
-            id: 1
-          },
-          # Step 3: Try calendar analysis (should fail due to expired token)
-          {
-            method: "tools/call",
-            params: {
-              name: "analyze_calendar_tool",
-              arguments: {
-                start_date: "2024-01-01",
-                end_date: "2024-01-31"
-              }
-            },
-            jsonrpc: "2.0",
-            id: 2
-          }
+          initialize_request(0),
+          check_auth_status_request(1),
+          analyze_calendar_request("2024-01-01", "2024-01-31", 2)
         ]
 
         responses = execute_mcp_requests(requests)
@@ -288,62 +173,11 @@ RSpec.describe 'Calendar Flow Integration', type: :integration do
 
       it 'completes re-authentication flow from expired token state' do
         requests = [
-          # Step 1: Initialize
-          {
-            method: "initialize",
-            params: {
-              protocolVersion: "2025-06-18",
-              capabilities: {},
-              clientInfo: { name: "claude-ai", version: "0.1.0" }
-            },
-            jsonrpc: "2.0",
-            id: 0
-          },
-          # Step 2: Check auth status (may show expired)
-          {
-            method: "tools/call",
-            params: {
-              name: "check_auth_status_tool",
-              arguments: {}
-            },
-            jsonrpc: "2.0",
-            id: 1
-          },
-          # Step 3: Start re-authentication
-          {
-            method: "tools/call",
-            params: {
-              name: "start_auth_tool",
-              arguments: {}
-            },
-            jsonrpc: "2.0",
-            id: 2
-          },
-          # Step 4: Try analysis after starting auth (should still fail)
-          {
-            method: "tools/call",
-            params: {
-              name: "analyze_calendar_tool",
-              arguments: {
-                start_date: "2024-01-01",
-                end_date: "2024-01-31"
-              }
-            },
-            jsonrpc: "2.0",
-            id: 3
-          },
-          # Step 5: Complete auth with invalid code
-          {
-            method: "tools/call",
-            params: {
-              name: "complete_auth_tool",
-              arguments: {
-                auth_code: "invalid_reauth_code"
-              }
-            },
-            jsonrpc: "2.0",
-            id: 4
-          }
+          initialize_request(0),
+          check_auth_status_request(1),
+          start_auth_request(2),
+          analyze_calendar_request("2024-01-01", "2024-01-31", 3),
+          complete_auth_request("invalid_reauth_code", 4)
         ]
 
         responses = execute_mcp_requests(requests)

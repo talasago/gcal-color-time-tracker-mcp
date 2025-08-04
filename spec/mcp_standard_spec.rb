@@ -2,25 +2,14 @@ require 'spec_helper'
 require 'json'
 require 'open3'
 
+# typeはintegrationが正しいのか？
 RSpec.describe 'MCP Standard Protocol', type: :integration do
   let(:server_command) { './bin/calendar-color-mcp' }
   let(:timeout_duration) { 3 }
 
   describe 'MCP Protocol initialization' do
     it 'responds to initialize request with 2025-06-18 protocol version' do
-      request = {
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-06-18",
-          capabilities: {},
-          clientInfo: {
-            name: "claude-ai",
-            version: "0.1.0"
-          }
-        },
-        jsonrpc: "2.0",
-        id: 0
-      }.to_json
+      request = initialize_request.to_json
 
       stdout, stderr, status = Open3.capture3(
         "echo '#{request}' | timeout #{timeout_duration} #{server_command}"
@@ -51,29 +40,8 @@ RSpec.describe 'MCP Standard Protocol', type: :integration do
 
   describe 'Tools list endpoint' do
     it 'returns all available tools with correct schema' do
-      # Initialize first
-      init_request = {
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-06-18",
-          capabilities: {},
-          clientInfo: {
-            name: "claude-ai",
-            version: "0.1.0"
-          }
-        },
-        jsonrpc: "2.0",
-        id: 0
-      }.to_json
-
-      # Then list tools
-      list_request = {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "tools/list",
-        params: {}
-      }.to_json
-
+      init_request = initialize_request.to_json
+      list_request = tools_list_request.to_json
       requests_sequence = [init_request, list_request].join("\n")
 
       stdout, stderr, status = Open3.capture3(
