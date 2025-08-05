@@ -1,96 +1,124 @@
-# CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Development Commands
-
-### Setup and Installation
+### サーバーの実行
 ```bash
-bundle install              # Install Ruby dependencies
-cp .env.example .env        # Setup environment variables
-chmod +x bin/calendar-color-mcp  # Make binary executable
+./bin/calendar-color-mcp    # MCPサーバーを開始
+DEBUG=true ./bin/calendar-color-mcp  # デバッグログ付きで開始
 ```
 
-### Running the Server
+### テスト
 ```bash
-./bin/calendar-color-mcp    # Start MCP server
-DEBUG=true ./bin/calendar-color-mcp  # Start with debug logging
+bundle exec rspec                           # 全テストを実行
+bundle exec rspec spec/mcp_standard_spec.rb # MCPプロトコルテストを実行
+bundle exec rspec spec/tool/                # 個別ツールテストを実行
+bundle exec rspec spec/integration/         # 統合テストを実行
+bundle exec rspec spec/[test_file].rb       # 単一テストファイルを実行
 ```
 
-### Testing
-```bash
-bundle exec rspec           # Run all tests
-bundle exec rspec spec/specific_test.rb  # Run single test file
+## 開発の進め方
+### twada氏のTDDにしたがった実装の開発
+- まずは失敗するテストを書き、その後にテストを通過するための最小限の実装を行う
+- テストが通過したら、リファクタリングを行い、テストが通過することを確認する
+
+## アーキテクチャ概要
+
+これは、公式**Ruby SDK**で構築された**MCP (Model Context Protocol) サーバー**で、Googleカレンダーの色ベース時間分析を提供します。アーキテクチャは関心の分離を明確にしたモジュラー設計に従っています：
+
+### コアコンポーネント
+
+- **`CalendarColorMCP::Server`** (lib/calendar_color_mcp/server.rb): `MCP::Server`と`StdioTransport`を使用するメインMCPサーバークラス、ツール登録とリクエストルーティングを処理
+- **ツールクラス** (lib/calendar_color_mcp/tools/): クラスベースMCPツール実装
+  - `AnalyzeCalendarTool`: メインカレンダー分析機能
+  - `StartAuthTool`: OAuth認証開始
+  - `CheckAuthStatusTool`: 認証状態検証
+- **`GoogleCalendarClient`**: Google Calendar API連携とOAuthトークン管理を処理
+- **`TimeAnalyzer`**: 色別カレンダーイベント分析と時間集計のコアビジネスロジック
+- **`TokenManager`**: シングルユーザートークン保存・管理（データベース不要）
+- **`SimpleAuthManager`**: シングルユーザーGoogle Calendar API アクセス用OAuth 2.0フロー管理
+
+### MCPツールの仕様
+
+サーバーはMCPプロトコル経由で**3つのツール**を公開（クラスベースツールとして実装）：
+- `AnalyzeCalendarTool`: メイン分析ツール（start_date、end_dateが必須） - **オプションの色フィルタリング付きで参加済みイベントのみ分析**
+- `StartAuthTool`: シングルユーザー用OAuthフロー開始  
+- `CheckAuthStatusTool`: 認証状態検証
+
+**イベントフィルタリング**: 分析には以下の条件のイベントのみ含める：
+- ユーザーが主催者（自動的に参加済みとみなす）
+- ユーザーが招待を承諾（`responseStatus: "accepted"`）
+- 参加者情報のないイベント（プライベートイベント）
+
+`declined`、`tentative`、`needsAction`の応答状態のイベントは分析から除外されます。
+
+**色フィルタリング**: 細かい色ベースフィルタリング用オプションパラメータ：
+- `include_colors`: 色ID（1-11）または色名の配列（例：["緑", "青", 1, "オレンジ"]）
+- `exclude_colors`: 分析から除外する色IDまたは色名の配列
+- 混合フォーマット対応: 色IDと日本語色名を併用可能
+- includeとexcludeの両方が指定された場合、excludeが優先
+
+### 認証フロー
+
+**シングルファイルトークン保存**（`token.json`）を使用：
+- OAuthトークンをJSONで保存、リフレッシュ機能付き
+- データベース依存なし - 純粋にローカルファイル管理
+- 簡素化された認証のためのシングルユーザー設計
+
+### 主要設計パターン
+
+- **公式MCP SDK統合**: コマンドラインMCPサーバー用に`StdioTransport`付き公式`mcp`gemを使用
+- **クラスベースツールアーキテクチャ**: 各MCPツールを`MCP::Tool`を継承する別クラスとして実装
+- **サーバーコンテキスト共有**: トークンと認証マネージャーを`server_context`経由でツール間共有
+- **OAuth 2.0 OOB（帯域外）フロー**: ローカルウェブサーバーなしのCLIフレンドリー認証
+- **モジュラー分離**: 各主要関心事（認証、カレンダー、分析、トークン）を別クラスに分離
+- **エラー境界処理**: Google API認証エラーをキャッチして再認証フローをトリガー
+- **色ベース集約**: Googleカレンダー色ID（1-11）による日本語色名付きイベントグループ化
+- **参加済みイベントフィルタリング**: 認証ユーザーが参加済みのイベントのみ分析（承諾招待、主催イベント、プライベートイベント）
+- **色ベースフィルタリング**: IDまたは日本語色名による特定色の包含/除外サポート
+
+## テストアーキテクチャ
+
+このプロジェクトは、関心の分離と責任の明確化による包括的テストスイートを使用しています。すべてのテストは実際のMCPサーバーバイナリ実行を使用してリアルな統合テストを保証します。
+
+### テストのルール
+- `describe`、`Pcontext`、`it`ブロックを使用してテストを構造化する
+- `context`を使用してテストの前提条件を定義する
+  - テスト内でif文を使用しない（代わりに`context`を使用して条件分岐を表現する） 
+    - if文による分岐はテストの理解と保守を困難にするため
+  - 同じインデントで`context`が5つ以上存在する場合、parameterizedテストを使用する
+- `it`ブロックにはshouldを使用して期待すべき動作を記述する
+- テストは実装の詳細ではなく、公開されている振る舞いをテストする
+- 外部の依存はテストダブルを使用する
+- 各テストは独立して実行可能で、他のテストに依存しない
+- テストは明確な目的を持ち、何をテストしているかを明示する
+- テストは実行順序に依存しないようにする
+- テストは実装の変更に対して堅牢であるべきで、実装の詳細に依存しない
+- テストは読みやすく、理解しやすいコードであるべき
+- テストは失敗することが期待される場合、明示的に失敗するように記述する
+- C0、C1カバレッジの目安は80%
+  - 100%にすることを目指すが、実装の複雑さを増すために無理に達成しないため
+
+### テスト構造
+
+```
+spec/
+├── mcp_standard_spec.rb           # MCPプロトコル標準準拠しているテスト
+├── tool/                          # 個別ツールの機能テスト
+├── integration/                   # 複数MCPツール間のエンドツーエンドフローテスト
 ```
 
-### Development Tools
-```bash
-bundle exec pry            # Interactive Ruby console for debugging
-```
+### テストカテゴリ
 
+#### ツール個別テスト（`spec/tool/`）
+**目的**: 各MCPツールの機能を独立してテスト
+- **パラメータ検証**: 必須/オプションパラメータ、型チェック
+- **レスポンスフォーマット**: 一貫したJSON構造、エラーハンドリング
+- **ビジネスロジック**: ツール固有の機能とエッジケース
 
-## Architecture Overview
+**カバレッジ含む**：
+- OAuth認証ツール（開始、状態確認、完了）
+- 日付検証と色フィルタリング付きカレンダー分析ツール
+- 全ツールのエラーハンドリングとパラメータ検証
 
-This is an **MCP (Model Context Protocol) server** built with the official **`mcp` Ruby SDK** that provides Google Calendar color-based time analytics. The architecture follows a modular design with clear separation of concerns:
-
-### Core Components
-
-- **`CalendarColorMCP::Server`** (lib/calendar_color_mcp/server.rb): Main MCP server class that uses `MCP::Server` and `StdioTransport`, handles tool registration and request routing
-- **Tool Classes** (lib/calendar_color_mcp/tools/): Class-based MCP tool implementations
-  - `AnalyzeCalendarTool`: Main calendar analysis functionality
-  - `StartAuthTool`: OAuth authentication initiation
-  - `CheckAuthStatusTool`: Authentication status validation
-- **`GoogleCalendarClient`**: Handles Google Calendar API interactions and OAuth token management
-- **`TimeAnalyzer`**: Core business logic for analyzing calendar events by color and calculating time summaries
-- **`TokenManager`**: Single-user token storage and management (no database required)
-- **`SimpleAuthManager`**: OAuth 2.0 flow management for single-user Google Calendar API access
-
-### MCP Protocol Implementation
-
-The server exposes **3 tools** via the MCP protocol (implemented as class-based tools):
-- `AnalyzeCalendarTool`: Main analysis tool (requires start_date, end_date) - **Only analyzes attended events with optional color filtering**
-- `StartAuthTool`: Initiates OAuth flow for single user  
-- `CheckAuthStatusTool`: Validates authentication state
-
-**Event Filtering**: The analysis only includes events where:
-- User is the organizer (automatically considered attended)
-- User has accepted the invitation (`responseStatus: "accepted"`)
-- Events without attendee information (private events)
-
-Events with `declined`, `tentative`, or `needsAction` response status are excluded from analysis.
-
-**Color Filtering**: Optional parameters for fine-grained color-based filtering:
-- `include_colors`: Array of color IDs (1-11) or color names (e.g., ["緑", "青", 1, "オレンジ"])
-- `exclude_colors`: Array of color IDs or color names to exclude from analysis
-- Supports mixed format: color IDs and Japanese color names can be used together
-- When both include and exclude are specified, exclude takes precedence
-
-**Note**: Resources (`auth://users`, `calendar://colors`) are planned for future implementation in the new SDK.
-
-### Authentication Flow
-
-Uses **single-file token storage** (`token.json`):
-- OAuth tokens stored as JSON with refresh capability
-- No database dependencies - purely local file management
-- Single-user design for simplified authentication
-
-### Key Design Patterns
-
-- **Official MCP SDK Integration**: Uses official `mcp` gem with `StdioTransport` for command-line MCP server
-- **Class-based Tool Architecture**: Each MCP tool implemented as separate class inheriting from `MCP::Tool`
-- **Server Context Sharing**: Token and auth managers shared across tools via `server_context`
-- **OAuth 2.0 OOB (out-of-band) flow**: CLI-friendly authentication without local web server
-- **Modular separation**: Each major concern (auth, calendar, analysis, tokens) in separate classes
-- **Error boundary handling**: Google API authorization errors are caught and trigger re-auth flow
-- **Color-based aggregation**: Events grouped by Google Calendar color IDs (1-11) with Japanese color names
-- **Attended Events Filtering**: Only analyzes events that the authenticated user has attended (accepted invitations, organized events, or private events)
-- **Color-based Filtering**: Support for including/excluding specific colors by ID or Japanese color names
-
-### Environment Configuration
-
-Requires Google Cloud Console OAuth 2.0 credentials:
-- `GOOGLE_CLIENT_ID`: OAuth client ID
-- `GOOGLE_CLIENT_SECRET`: OAuth client secret  
-- `DEBUG`: Optional debug logging flag
-
-The server is designed to run as a long-lived process that Claude can communicate with via the MCP protocol for calendar analysis tasks.
+#### 統合テスト（`spec/integration/`）
+**目的**: 完全なリクエスト-レスポンスフローとツール連携をテスト
+- **認証フロー**: 認証開始 → 状態確認 → 認証完了 → 分析
+- ただし、実際のGoogle Calendar API呼び出しは行なっていないため、正常系のフローは網羅できていない。
