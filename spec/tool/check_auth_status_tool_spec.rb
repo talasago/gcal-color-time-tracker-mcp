@@ -3,23 +3,17 @@ require_relative '../../lib/calendar_color_mcp/tools/check_auth_status_tool'
 
 RSpec.describe 'CheckAuthStatusTool', type: :request do
   include MCPRequestHelpers
+  include MCPSharedHelpers
 
   describe 'check_auth_status_tool execution' do
     let(:init_req) { initialize_request(0) }
     let(:auth_check_req) { check_auth_status_request(1) }
     let(:responses) { execute_mcp_requests([init_req, auth_check_req]) }
     let(:response) { responses[1] }
-    let(:content) { JSON.parse(response['result']['content'][0]['text']) }
+    let(:content) { parse_response_content(response) }
+    let(:expected_id) { 1 }
 
-    it 'should return valid MCP protocol response' do
-      aggregate_failures do
-        expect(response['jsonrpc']).to eq('2.0')
-        expect(response['id']).to eq(1)
-        expect(response['result']['isError']).to be false
-        expect(response['result']['content']).to be_an(Array)
-        expect(response['result']['content'].length).to eq(1)
-      end
-    end
+    include_examples 'valid MCP protocol response'
 
     it 'should return authentication status with required fields' do
       aggregate_failures do
@@ -89,19 +83,7 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
       end
     end
 
-    context 'when auth_manager is not available' do
-      let(:server_context) { {} }
-
-      it 'should return error response' do
-        response = CalendarColorMCP::CheckAuthStatusTool.call(server_context: server_context)
-        content = JSON.parse(response.content[0][:text])
-
-        aggregate_failures do
-          expect(content['success']).to be false
-          expect(content['error']).to eq('認証マネージャーが利用できません')
-        end
-      end
-    end
+    include_examples 'handles missing auth manager', CalendarColorMCP::CheckAuthStatusTool
   end
 
   describe 'response format validation' do
@@ -123,26 +105,7 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
     end
   end
 
-  describe 'error handling' do
-    it 'handles tool call with invalid parameters gracefully' do
-      init_req = initialize_request(0)
-      invalid_req = {
-        method: "tools/call",
-        params: {
-          name: "check_auth_status_tool",
-          arguments: {
-            invalid_param: "should_be_ignored"
-          }
-        },
-        jsonrpc: "2.0",
-        id: 1
-      }
-      responses = execute_mcp_requests([init_req, invalid_req])
-      response = responses[1]
-
-      expect(response['result']['isError']).to be false
-      content = JSON.parse(response['result']['content'][0]['text'])
-      expect(content).to have_key('authenticated')
-    end
+  describe 'invalid parameter handling' do
+    include_examples 'handles invalid parameters gracefully', 'check_auth_status_tool'
   end
 end

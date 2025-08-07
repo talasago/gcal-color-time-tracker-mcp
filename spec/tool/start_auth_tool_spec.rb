@@ -1,24 +1,26 @@
 require 'spec_helper'
+require 'uri'
+require 'cgi'
+require_relative '../../lib/calendar_color_mcp/tools/start_auth_tool'
 
 RSpec.describe 'StartAuthTool', type: :request do
   include MCPRequestHelpers
+  include MCPSharedHelpers
 
   describe 'start_auth_tool execution' do
+    let(:init_req) { initialize_request(0) }
+    let(:start_auth_req) { start_auth_request(1) }
+    let(:responses) { execute_mcp_requests([init_req, start_auth_req]) }
+    let(:response) { responses[1] }
+    let(:content) { parse_response_content(response) }
+    let(:expected_id) { 1 }
+
+    include_examples 'valid MCP protocol response'
+
     it 'should return successful response with valid OAuth URL and instructions' do
-      init_req = initialize_request(0)
-      start_auth_req = start_auth_request(1)
-      responses = execute_mcp_requests([init_req, start_auth_req])
-      response = responses[1]
-
       aggregate_failures do
-        expect(response['jsonrpc']).to eq('2.0')
-        expect(response['id']).to eq(1)
-        expect(response['result']['isError']).to be false
-        expect(response['result']['content']).to be_an(Array)
-        expect(response['result']['content'].length).to eq(1)
-
-        content = JSON.parse(response['result']['content'][0]['text'])
-        expect(content['success']).to be true
+        expect_success_response(content)
+        expect(content).to have_key('auth_url')
         expect(content['auth_url']).to start_with('https://accounts.google.com/o/oauth2/auth')
         expect(content).to have_key('instructions')
         expect(content['instructions']).to be_a(String)
@@ -36,9 +38,9 @@ RSpec.describe 'StartAuthTool', type: :request do
 
         expect(query_params['response_type']).to eq(['code'])
         expect(query_params['access_type']).to eq(['offline'])
-        expect(query_params['approval_prompt']).to eq(['force'])
+        expect(query_params['prompt']).to eq(['consent'])
         expect(query_params['scope']).to include('https://www.googleapis.com/auth/calendar.readonly')
-        expect(query_params['client_id']).to be_present
+        expect(query_params['client_id']).not_to be_empty
         expect(query_params['redirect_uri']).to eq(['urn:ietf:wg:oauth:2.0:oob'])
       end
     end
@@ -66,27 +68,10 @@ RSpec.describe 'StartAuthTool', type: :request do
   end
 
   describe 'invalid parameter handling' do
-    it 'should handle tool call with invalid parameters gracefully' do
-      init_req = initialize_request(0)
-      # Call with invalid extra parameters
-      invalid_req = {
-        method: "tools/call",
-        params: {
-          name: "start_auth_tool",
-          arguments: {
-            invalid_param: "should_be_ignored"
-          }
-        },
-        jsonrpc: "2.0",
-        id: 1
-      }
-      responses = execute_mcp_requests([init_req, invalid_req])
-      response = responses[1]
+    include_examples 'handles invalid parameters gracefully', 'start_auth_tool'
+  end
 
-      # Should still work even with extra parameters
-      expect(response['result']['isError']).to be false
-      content = JSON.parse(response['result']['content'][0]['text'])
-      expect(content['success']).to be true
-    end
+  describe 'error handling' do
+    include_examples 'handles missing auth manager', CalendarColorMCP::StartAuthTool
   end
 end
