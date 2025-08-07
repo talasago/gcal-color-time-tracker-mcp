@@ -9,6 +9,10 @@ RSpec.describe 'StartAuthTool', type: :request do
 
   describe 'successful authentication start' do
     context 'when called with valid parameters' do
+      before do
+        ENV['GOOGLE_CLIENT_ID'] ||= 'test-client-id-12345.apps.googleusercontent.com'
+      end
+
       let(:init_req) { initialize_request(0) }
       let(:start_auth_req) { start_auth_request(1) }
       let(:responses) { execute_mcp_requests([init_req, start_auth_req]) }
@@ -39,7 +43,7 @@ RSpec.describe 'StartAuthTool', type: :request do
           expect(query_params['access_type']).to eq(['offline'])
           expect(query_params['prompt']).to eq(['consent'])
           expect(query_params['scope']).to include('https://www.googleapis.com/auth/calendar.readonly')
-          expect(query_params['client_id']).not_to be_empty
+          expect(query_params['client_id']).to eq([ENV['GOOGLE_CLIENT_ID']])
           expect(query_params['redirect_uri']).to eq(['urn:ietf:wg:oauth:2.0:oob'])
         end
       end
