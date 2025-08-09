@@ -93,13 +93,13 @@ RSpec.describe 'CompleteAuthTool', type: :request do
   describe 'auth code format validation' do
     context 'when auth code has whitespace' do
       it 'handles whitespace in auth code' do
-      init_req = initialize_request(0)
-      complete_auth_req = complete_auth_request("  test_code  ", 1)
-      responses = execute_mcp_requests([init_req, complete_auth_req])
-      response = responses[1]
-      content = parse_response_content(response)
+        init_req = initialize_request(0)
+        complete_auth_req = complete_auth_request("  test_code  ", 1)
+        responses = execute_mcp_requests([init_req, complete_auth_req])
+        response = responses[1]
+        content = parse_response_content(response)
 
-      expect_success_response(content)
+        expect_success_response(content)
       end
     end
   end
