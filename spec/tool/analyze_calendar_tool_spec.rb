@@ -1,4 +1,5 @@
 require 'spec_helper'
+require_relative '../support/mcp_shared_contexts'
 require_relative '../../lib/calendar_color_mcp/tools/analyze_calendar_tool'
 
 RSpec.describe 'AnalyzeCalendarTool', type: :request do
@@ -6,29 +7,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
   include MCPSharedHelpers
 
   describe 'date range validation' do
-    let(:mock_auth_manager) do
-      instance_double('CalendarColorMCP::SimpleAuthManager').tap do |mock|
-        allow(mock).to receive(:authenticated?).and_return(true)
-      end
-    end
-
-    let(:mock_calendar_client) do
-      instance_double('CalendarColorMCP::GoogleCalendarClient').tap do |mock|
-        allow(mock).to receive(:get_events).and_return([])
-      end
-    end
-
-    let(:server_context) { { auth_manager: mock_auth_manager, calendar_client: mock_calendar_client } }
-
-    before do
-      allow(CalendarColorMCP::GoogleCalendarClient).to receive(:new).and_return(mock_calendar_client)
-      mock_analyzer = instance_double('CalendarColorMCP::TimeAnalyzer')
-      mock_filter = instance_double('CalendarColorMCP::ColorFilterManager')
-      allow(CalendarColorMCP::TimeAnalyzer).to receive(:new).and_return(mock_analyzer)
-      allow(CalendarColorMCP::ColorFilterManager).to receive(:new).and_return(mock_filter)
-      allow(mock_analyzer).to receive(:analyze).and_return({ color_breakdown: {}, summary: { total_hours: 0, total_events: 0 } })
-      allow(mock_filter).to receive(:get_filtering_summary).and_return({ has_filters: false })
-    end
+    include_context 'calendar analysis setup'
 
     shared_examples 'valid date range processing' do |start_date, end_date, expected_days, description|
       it "should handle #{description}" do
@@ -94,6 +73,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
     end
 
     context 'when user is not authenticated' do
+      include_context 'unauthenticated user'
       let(:is_authenticated) { false }
 
       it 'should return authentication required message' do
@@ -113,24 +93,9 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
     end
 
     context 'when user is authenticated' do
+      include_context 'calendar analysis setup'
       let(:is_authenticated) { true }
       let(:mock_events) { [] }
-
-      # TODO: GoogleCalendarClientをこのテストが知っているのが気になる。後で考える
-      before do
-        # GoogleCalendarClientが内部で作成されるのをモック
-        allow(CalendarColorMCP::GoogleCalendarClient).to receive(:new).and_return(mock_calendar_client)
-        # TimeAnalyzerとColorFilterManagerもモック
-        mock_analyzer = instance_double('CalendarColorMCP::TimeAnalyzer')
-        mock_filter = instance_double('CalendarColorMCP::ColorFilterManager')
-        allow(CalendarColorMCP::TimeAnalyzer).to receive(:new).and_return(mock_analyzer)
-        allow(CalendarColorMCP::ColorFilterManager).to receive(:new).and_return(mock_filter)
-        allow(mock_analyzer).to receive(:analyze).and_return({
-          color_breakdown: {},
-          summary: { total_hours: 0, total_events: 0 }
-        })
-        allow(mock_filter).to receive(:get_filtering_summary).and_return({ has_filters: false })
-      end
 
       it 'should process calendar analysis successfully' do
         response = CalendarColorMCP::AnalyzeCalendarTool.call(
@@ -201,28 +166,22 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
   end
 
   describe 'color filtering' do
+    include_context 'calendar analysis setup'
+    
+    before do
+      # Override mock_filter to return has_filters: true for these tests
+      mock_filter = instance_double('CalendarColorMCP::ColorFilterManager')
+      allow(CalendarColorMCP::ColorFilterManager).to receive(:new).and_return(mock_filter)
+      allow(mock_filter).to receive(:get_filtering_summary).and_return({ has_filters: true })
+    end
+
     describe 'valid color specifications' do
       it 'should accept mixed color IDs and names' do
-        mock_auth_manager = instance_double('CalendarColorMCP::SimpleAuthManager')
-        allow(mock_auth_manager).to receive(:authenticated?).and_return(true)
-
-        mock_calendar_client = instance_double('CalendarColorMCP::GoogleCalendarClient')
-        allow(mock_calendar_client).to receive(:get_events).and_return([])
-
-        allow(CalendarColorMCP::GoogleCalendarClient).to receive(:new).and_return(mock_calendar_client)
-
-        mock_analyzer = instance_double('CalendarColorMCP::TimeAnalyzer')
-        mock_filter = instance_double('CalendarColorMCP::ColorFilterManager')
-        allow(CalendarColorMCP::TimeAnalyzer).to receive(:new).and_return(mock_analyzer)
-        allow(CalendarColorMCP::ColorFilterManager).to receive(:new).and_return(mock_filter)
-        allow(mock_analyzer).to receive(:analyze).and_return({ color_breakdown: {}, summary: { total_hours: 0, total_events: 0 } })
-        allow(mock_filter).to receive(:get_filtering_summary).and_return({ has_filters: true })
-
         response = CalendarColorMCP::AnalyzeCalendarTool.call(
           start_date: "2024-01-01",
           end_date: "2024-01-31",
           include_colors: [1, "緑", 3, "青"],
-          server_context: { auth_manager: mock_auth_manager, calendar_client: mock_calendar_client }
+          server_context: server_context
         )
         content = JSON.parse(response.content[0][:text])
 
@@ -232,27 +191,12 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
       end
 
       it 'should handle both include and exclude parameters together' do
-        mock_auth_manager = instance_double('CalendarColorMCP::SimpleAuthManager')
-        allow(mock_auth_manager).to receive(:authenticated?).and_return(true)
-
-        mock_calendar_client = instance_double('CalendarColorMCP::GoogleCalendarClient')
-        allow(mock_calendar_client).to receive(:get_events).and_return([])
-
-        allow(CalendarColorMCP::GoogleCalendarClient).to receive(:new).and_return(mock_calendar_client)
-
-        mock_analyzer = instance_double('CalendarColorMCP::TimeAnalyzer')
-        mock_filter = instance_double('CalendarColorMCP::ColorFilterManager')
-        allow(CalendarColorMCP::TimeAnalyzer).to receive(:new).and_return(mock_analyzer)
-        allow(CalendarColorMCP::ColorFilterManager).to receive(:new).and_return(mock_filter)
-        allow(mock_analyzer).to receive(:analyze).and_return({ color_breakdown: {}, summary: { total_hours: 0, total_events: 0 } })
-        allow(mock_filter).to receive(:get_filtering_summary).and_return({ has_filters: true })
-
         response = CalendarColorMCP::AnalyzeCalendarTool.call(
           start_date: "2024-01-01",
           end_date: "2024-01-31",
           include_colors: [1, 2, "緑"],
           exclude_colors: [3, "赤"],
-          server_context: { auth_manager: mock_auth_manager, calendar_client: mock_calendar_client }
+          server_context: server_context
         )
         content = JSON.parse(response.content[0][:text])
 

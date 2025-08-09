@@ -1,4 +1,5 @@
 require 'spec_helper'
+require_relative '../support/mcp_shared_contexts'
 require_relative '../../lib/calendar_color_mcp/tools/check_auth_status_tool'
 
 RSpec.describe 'CheckAuthStatusTool', type: :request do
@@ -40,17 +41,9 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
   end
 
   describe 'CheckAuthStatusTool unit tests' do
-    let(:mock_auth_manager) do
-      instance_double('CalendarColorMCP::SimpleAuthManager').tap do |mock|
-        allow(mock).to receive(:authenticated?).and_return(is_authenticated)
-        allow(mock).to receive(:get_auth_url).and_return(auth_url) if defined?(auth_url)
-      end
-    end
-
-    let(:server_context) { { auth_manager: mock_auth_manager } }
 
     context 'when user is authenticated' do
-      let(:is_authenticated) { true }
+      include_context 'authenticated user'
 
       it 'should provide authenticated user information' do
         response = CalendarColorMCP::CheckAuthStatusTool.call(server_context: server_context)
@@ -66,8 +59,7 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
     end
 
     context 'when user is not authenticated' do
-      let(:is_authenticated) { false }
-      let(:auth_url) { 'https://accounts.google.com/oauth2/auth?client_id=...' }
+      include_context 'unauthenticated user'
 
       it 'should provide authentication required message' do
         response = CalendarColorMCP::CheckAuthStatusTool.call(server_context: server_context)

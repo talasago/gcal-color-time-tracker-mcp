@@ -1,4 +1,5 @@
 require 'spec_helper'
+require_relative '../support/mcp_shared_contexts'
 require_relative '../../lib/calendar_color_mcp/tools/complete_auth_tool'
 
 RSpec.describe 'CompleteAuthTool', type: :request do
@@ -7,16 +8,16 @@ RSpec.describe 'CompleteAuthTool', type: :request do
 
   describe 'complete_auth_tool execution' do
     context 'when auth code is valid (mocked)' do
-      it 'handles valid auth code' do
-        # Mock auth_manager to return success response
-        auth_manager = double('auth_manager')
-        allow(auth_manager).to receive(:complete_auth).and_return({
+      include_context 'authenticated user'
+      
+      before do
+        allow(mock_auth_manager).to receive(:complete_auth).and_return({
           success: true,
           message: "認証が完了しました"
         })
-
-        # Mock server_context
-        server_context = { auth_manager: auth_manager }
+      end
+      
+      it 'handles valid auth code' do
 
         # Call tool directly with mocked context
         response = CalendarColorMCP::CompleteAuthTool.call(
