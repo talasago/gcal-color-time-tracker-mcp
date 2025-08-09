@@ -53,15 +53,15 @@ RSpec.describe 'CompleteAuthTool', type: :request do
     context 'when auth code is empty' do
       # ツールレベルでの空文字バリデーション（arguments: {auth_code: \"\"}）
       it 'handles empty auth code' do
-      init_req = initialize_request(0)
-      complete_auth_req = complete_auth_request("", 1)
-      responses = execute_mcp_requests([init_req, complete_auth_req])
-      response = responses[1]
-      content = parse_response_content(response)
+        init_req = initialize_request(0)
+        complete_auth_req = complete_auth_request("", 1)
+        responses = execute_mcp_requests([init_req, complete_auth_req])
+        response = responses[1]
+        content = parse_response_content(response)
 
-      expect(content['success']).to be false
-      # Specific error message defined in implementation
-      expect(content['error']).to eq('認証コードが指定されていません')
+        expect(content['success']).to be false
+        # Specific error message defined in implementation
+        expect(content['error']).to eq('認証コードが指定されていません')
       end
     end
   end
