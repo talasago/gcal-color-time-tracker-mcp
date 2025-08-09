@@ -1,4 +1,6 @@
 require 'spec_helper'
+require_relative '../support/mcp_request_helpers'
+require_relative '../support/mcp_shared_examples'
 require_relative '../support/mcp_shared_contexts'
 require_relative '../../lib/calendar_color_mcp/tools/analyze_calendar_tool'
 

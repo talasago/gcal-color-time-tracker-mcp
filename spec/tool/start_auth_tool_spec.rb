@@ -1,4 +1,6 @@
 require 'spec_helper'
+require_relative '../support/mcp_request_helpers'
+require_relative '../support/mcp_shared_examples'
 require 'uri'
 require 'cgi'
 require_relative '../../lib/calendar_color_mcp/tools/start_auth_tool'

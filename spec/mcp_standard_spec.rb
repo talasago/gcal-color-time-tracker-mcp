@@ -1,4 +1,5 @@
 require 'spec_helper'
+require_relative 'support/mcp_request_helpers'
 
 RSpec.describe 'MCP Standard Protocol', type: :request do
   include MCPRequestHelpers

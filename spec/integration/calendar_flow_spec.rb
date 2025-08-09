@@ -1,4 +1,5 @@
 require 'spec_helper'
+require_relative '../support/mcp_request_helpers'
 
 RSpec.describe 'Calendar Flow Integration', type: :integration do
   include MCPRequestHelpers
