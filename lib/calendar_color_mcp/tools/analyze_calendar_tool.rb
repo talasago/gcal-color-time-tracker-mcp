@@ -3,6 +3,7 @@ require_relative 'base_tool'
 require_relative '../google_calendar_client'
 require_relative '../time_analyzer'
 require_relative '../color_filter_manager'
+require_relative '../errors'
 
 module CalendarColorMCP
   class AnalyzeCalendarTool < BaseTool
@@ -82,11 +83,13 @@ module CalendarColorMCP
             summary: result[:summary],
             formatted_output: format_analysis_output(result, color_filter)
           })
-        rescue Google::Apis::AuthorizationError
+        rescue AuthenticationError => e
           auth_url = auth_manager.get_auth_url
-          return error_response("認証の更新が必要です").with(:auth_url, auth_url).build
+          return error_response(e.message).with(:auth_url, auth_url).build
+        rescue CalendarApiError => e
+          return error_response(e.message).build
         rescue => e
-          error_response(e.message).build
+          error_response("予期しないエラーが発生しました: #{e.message}").build
         end
       end
 
