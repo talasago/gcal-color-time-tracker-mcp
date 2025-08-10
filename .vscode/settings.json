@@ -2,7 +2,6 @@
   "files.associations": {
     "*.rb": "ruby",
     "Gemfile": "ruby",
-    "Rakefile": "ruby",
-    "*.gemspec": "ruby"
+    "Rakefile": "ruby"
   },
 }

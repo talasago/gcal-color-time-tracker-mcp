@@ -145,19 +145,27 @@ chmod +x bin/calendar-color-mcp
 ```
 calendar-color-mcp/
 ├── lib/
-│   ├── calendar_color_mcp.rb          # メインサーバー
-│   ├── calendar_color_mcp/
-│   │   ├── server.rb                  # MCPサーバー実装
-│   │   ├── google_calendar_client.rb  # Google Calendar API
-│   │   ├── time_analyzer.rb           # 時間分析ロジック
-│   │   ├── user_manager.rb            # ユーザー管理
-│   │   └── auth_manager.rb            # 認証管理
+│   ├── calendar_color_mcp.rb            # メインエントリーポイント
+│   └── calendar_color_mcp/
+│       ├── server.rb                    # MCPサーバー実装
+│       ├── google_calendar_client.rb    # Google Calendar API
+│       ├── google_calendar_auth_manager.rb # OAuth認証管理
+│       ├── token_manager.rb             # トークン保存・管理
+│       ├── time_analyzer.rb             # 時間分析ロジック
+│       ├── color_filter_manager.rb      # 色フィルタリング
+│       └── tools/                       # MCPツール実装
+│           ├── base_tool.rb             # ベースツールクラス
+│           ├── analyze_calendar_tool.rb # カレンダー分析ツール
+│           ├── start_auth_tool.rb       # 認証開始ツール
+│           ├── check_auth_status_tool.rb# 認証状態確認ツール
+│           └── complete_auth_tool.rb    # 認証完了ツール
 ├── bin/
-│   └── calendar-color-mcp             # 実行可能ファイル
-├── Gemfile
-├── .env.example
-├── calendar_color_mcp.gemspec
-└── README.md
+│   └── calendar-color-mcp               # 実行可能ファイル
+├── spec/                                # テストスイート
+├── Gemfile                              # 依存関係定義
+├── .env.example                         # 環境変数サンプル
+├── CLAUDE.md                            # Claude Code用のサンプル
+└── README.md                            # このファイル
 ```
 
 ## カレンダー色定義
