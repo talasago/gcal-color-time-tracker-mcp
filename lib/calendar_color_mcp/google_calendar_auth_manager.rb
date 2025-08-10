@@ -29,14 +29,11 @@ module CalendarColorMCP
         raise "GOOGLE_CLIENT_SECRET が設定されていません。.env ファイルを確認してください。"
       end
 
-      scope = SCOPE
-      redirect_uri = REDIRECT_URI
-
       # OAuth2の認証URLを直接構築
       params = {
         'client_id' => client_id,
-        'redirect_uri' => redirect_uri,
-        'scope' => scope,
+        'redirect_uri' => REDIRECT_URI,
+        'scope' => SCOPE,
         'response_type' => 'code',
         'access_type' => 'offline',
         'prompt' => 'consent'
