@@ -20,8 +20,8 @@ module CalendarColorMCP
       # 必要な環境変数の検証
       validate_environment_variables
 
-      @token_manager = TokenManager.new
-      @auth_manager = SimpleAuthManager.new
+      @token_manager = TokenManager.instance
+      @auth_manager = SimpleAuthManager.instance
 
       log_info "Creating MCP::Server with tools..."
       begin

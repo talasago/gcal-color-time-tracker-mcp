@@ -1,9 +1,11 @@
 require 'json'
 require 'fileutils'
 require 'googleauth'
+require 'singleton'
 
 module CalendarColorMCP
   class TokenManager
+    include Singleton
     TOKEN_FILE = 'token.json'
 
     def initialize

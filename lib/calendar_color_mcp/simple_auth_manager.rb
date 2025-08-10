@@ -3,15 +3,17 @@ require 'googleauth'
 require 'googleauth/stores/file_token_store'
 require 'ostruct'
 require 'cgi'
+require 'singleton'
 require_relative 'token_manager'
 
 module CalendarColorMCP
   class SimpleAuthManager
+    include Singleton
     SCOPE = Google::Apis::CalendarV3::AUTH_CALENDAR_READONLY
     REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'  # OOB flow for CLI
 
     def initialize
-      @token_manager = TokenManager.new
+      @token_manager = TokenManager.instance
     end
 
     def get_auth_url

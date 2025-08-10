@@ -10,7 +10,7 @@ module CalendarColorMCP
 
     def initialize
       @service = Google::Apis::CalendarV3::CalendarService.new
-      @token_manager = TokenManager.new
+      @token_manager = TokenManager.instance
       authorize_service
       @user_email = get_user_email
     end
