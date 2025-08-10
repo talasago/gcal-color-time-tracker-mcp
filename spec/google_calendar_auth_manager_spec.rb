@@ -1,18 +1,18 @@
 require 'spec_helper'
-require_relative '../lib/calendar_color_mcp/simple_auth_manager'
+require_relative '../lib/calendar_color_mcp/google_calendar_auth_manager'
 
-describe CalendarColorMCP::SimpleAuthManager do
-  let(:auth_manager) { CalendarColorMCP::SimpleAuthManager.instance }
+describe CalendarColorMCP::GoogleCalendarAuthManager do
+  let(:auth_manager) { CalendarColorMCP::GoogleCalendarAuthManager.instance }
 
   context "when using singleton pattern" do
     it "should return the same instance" do
-      instance1 = CalendarColorMCP::SimpleAuthManager.instance
-      instance2 = CalendarColorMCP::SimpleAuthManager.instance
+      instance1 = CalendarColorMCP::GoogleCalendarAuthManager.instance
+      instance2 = CalendarColorMCP::GoogleCalendarAuthManager.instance
       expect(instance1).to be(instance2)
     end
 
     it "should not allow direct instantiation" do
-      expect { CalendarColorMCP::SimpleAuthManager.new }.to raise_error(NoMethodError)
+      expect { CalendarColorMCP::GoogleCalendarAuthManager.new }.to raise_error(NoMethodError)
     end
   end
 

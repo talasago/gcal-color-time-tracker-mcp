@@ -2,7 +2,7 @@ require 'mcp'
 require 'logger'
 require 'fileutils'
 require_relative 'token_manager'
-require_relative 'simple_auth_manager'
+require_relative 'google_calendar_auth_manager'
 require_relative 'time_analyzer'
 require_relative 'tools/analyze_calendar_tool'
 require_relative 'tools/start_auth_tool'
@@ -21,7 +21,7 @@ module CalendarColorMCP
       validate_environment_variables
 
       @token_manager = TokenManager.instance
-      @auth_manager = SimpleAuthManager.instance
+      @auth_manager = GoogleCalendarAuthManager.instance
 
       log_info "Creating MCP::Server with tools..."
       begin

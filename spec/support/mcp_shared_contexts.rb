@@ -1,6 +1,6 @@
 RSpec.shared_context 'authenticated user' do
   let(:mock_auth_manager) do
-    instance_double('CalendarColorMCP::SimpleAuthManager').tap do |mock|
+    instance_double('CalendarColorMCP::GoogleCalendarAuthManager').tap do |mock|
       allow(mock).to receive(:authenticated?).and_return(true)
       allow(mock).to receive(:get_auth_url).and_return('https://accounts.google.com/oauth2/auth?client_id=...')
     end
@@ -11,7 +11,7 @@ end
 
 RSpec.shared_context 'unauthenticated user' do
   let(:mock_auth_manager) do
-    instance_double('CalendarColorMCP::SimpleAuthManager').tap do |mock|
+    instance_double('CalendarColorMCP::GoogleCalendarAuthManager').tap do |mock|
       allow(mock).to receive(:authenticated?).and_return(false)
       allow(mock).to receive(:get_auth_url).and_return('https://accounts.google.com/oauth2/auth?client_id=...')
     end

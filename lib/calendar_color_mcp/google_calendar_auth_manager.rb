@@ -7,7 +7,7 @@ require 'singleton'
 require_relative 'token_manager'
 
 module CalendarColorMCP
-  class SimpleAuthManager
+  class GoogleCalendarAuthManager
     include Singleton
     SCOPE = Google::Apis::CalendarV3::AUTH_CALENDAR_READONLY
     REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'  # OOB flow for CLI

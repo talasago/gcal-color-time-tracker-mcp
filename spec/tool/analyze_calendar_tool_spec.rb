@@ -44,7 +44,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
 
   describe 'authentication handling' do
     let(:mock_auth_manager) do
-      instance_double('CalendarColorMCP::SimpleAuthManager').tap do |mock|
+      instance_double('CalendarColorMCP::GoogleCalendarAuthManager').tap do |mock|
         allow(mock).to receive(:authenticated?).and_return(is_authenticated)
         allow(mock).to receive(:get_auth_url).and_return('https://accounts.google.com/oauth/authorize?...')
       end
