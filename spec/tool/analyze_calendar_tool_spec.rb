@@ -58,21 +58,10 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
 
     let(:server_context) { { auth_manager: mock_auth_manager, calendar_client: mock_calendar_client } }
 
-    context 'when auth_manager is not available' do
-      it 'should return error response' do
-        response = CalendarColorMCP::AnalyzeCalendarTool.call(
-          start_date: "2024-01-01",
-          end_date: "2024-01-31",
-          server_context: {}
-        )
-        content = JSON.parse(response.content[0][:text])
-
-        aggregate_failures do
-          expect(content['success']).to be false
-          expect(content['error']).to eq('認証マネージャーが利用できません')
-        end
-      end
-    end
+    include_examples 'BaseTool inheritance', CalendarColorMCP::AnalyzeCalendarTool, {
+      start_date: "2024-01-01",
+      end_date: "2024-01-31"
+    }
 
     context 'when user is not authenticated' do
       include_context 'unauthenticated user'
