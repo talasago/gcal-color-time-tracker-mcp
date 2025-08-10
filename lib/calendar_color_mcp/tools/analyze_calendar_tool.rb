@@ -3,6 +3,7 @@ require_relative 'base_tool'
 require_relative '../google_calendar_client'
 require_relative '../time_analyzer'
 require_relative '../color_filter_manager'
+require_relative '../color_constants'
 require_relative '../errors'
 
 module CalendarColorMCP
@@ -26,7 +27,7 @@ module CalendarColorMCP
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
-              { type: "string", enum: ["薄紫", "緑", "紫", "赤", "黄", "オレンジ", "水色", "灰色", "青", "濃い緑", "濃い赤"] }
+              { type: "string", enum: ColorConstants.color_names_array }
             ]
           }
         },
@@ -36,7 +37,7 @@ module CalendarColorMCP
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
-              { type: "string", enum: ["薄紫", "緑", "紫", "赤", "黄", "オレンジ", "水色", "灰色", "青", "濃い緑", "濃い赤"] }
+              { type: "string", enum: ColorConstants.color_names_array }
             ]
           }
         }

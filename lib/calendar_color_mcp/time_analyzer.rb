@@ -1,12 +1,8 @@
 require 'date'
+require_relative 'color_constants'
 
 module CalendarColorMCP
   class TimeAnalyzer
-    COLOR_NAMES = {
-      1 => '薄紫', 2 => '緑', 3 => '紫', 4 => '赤', 5 => '黄',
-      6 => 'オレンジ', 7 => '水色', 8 => '灰色', 9 => '青',
-      10 => '濃い緑', 11 => '濃い赤'
-    }.freeze
 
     def analyze(events, start_date, end_date, color_filter: nil)
       # 色フィルタリングを適用
@@ -28,8 +24,8 @@ module CalendarColorMCP
       color_data = {}
 
       events.each do |event|
-        color_id = event.color_id&.to_i || 9  # デフォルトは青
-        color_name = COLOR_NAMES[color_id] || "不明 (#{color_id})"
+        color_id = event.color_id&.to_i || ColorConstants.default_color_id
+        color_name = ColorConstants.color_name(color_id) || "不明 (#{color_id})"
 
         color_data[color_name] ||= {
           total_hours: 0.0,
