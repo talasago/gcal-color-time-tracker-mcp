@@ -91,7 +91,8 @@ bundle exec rspec spec/[test_file].rb       # 単一テストファイルを実�
     - if文による分岐はテストの理解と保守を困難にするため
   - 同じインデントで`context`が5つ以上存在する場合、parameterizedテストを使用する
   - `let`の遅延評価や`subject`を使うことで、コード量を減らす
-    - `subject`はAAAパターンの`Act`部分に相当します
+    - `subject`はAAAパターンの`Act`部分に相当できる
+    - また、`subject`はSUT（System Under Test）を表すことができる 
   - 事前処理事後処理には`before`、`after`ブロックを使用
   - `it`ブロックにはshouldを使用して期待すべき動作を記述する
 
