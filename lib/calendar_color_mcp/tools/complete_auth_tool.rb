@@ -1,7 +1,8 @@
 require 'mcp'
+require_relative 'base_tool'
 
 module CalendarColorMCP
-  class CompleteAuthTool < MCP::Tool
+  class CompleteAuthTool < BaseTool
     description "Google認証コードを使用して認証を完了します"
 
     input_schema(
@@ -17,30 +18,16 @@ module CalendarColorMCP
 
     class << self
       def call(auth_code:, **context)
-        server_context = context[:server_context]
-        auth_manager = server_context&.dig(:auth_manager)
-
-        unless auth_manager
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: {
-              success: false,
-              error: "認証マネージャーが利用できません"
-            }.to_json
-          }])
+        begin
+          auth_manager = extract_auth_manager(context)
+        rescue ArgumentError => e
+          return error_response(e.message).build
         end
 
         if auth_code.nil? || auth_code.strip.empty?
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: {
-              success: false,
-              error: "認証コードが指定されていません"
-            }.to_json
-          }])
+          return error_response("認証コードが指定されていません").build
         end
 
-        # 認証コードを使用して認証を完了
         result = auth_manager.complete_auth(auth_code.strip)
 
         MCP::Tool::Response.new([{

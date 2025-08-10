@@ -1,7 +1,8 @@
 require 'mcp'
+require_relative 'base_tool'
 
 module CalendarColorMCP
-  class StartAuthTool < MCP::Tool
+  class StartAuthTool < BaseTool
     description "Google Calendar認証を開始します"
 
     input_schema(
@@ -12,32 +13,19 @@ module CalendarColorMCP
 
     class << self
       def call(**context)
-        server_context = context[:server_context]
-        auth_manager = server_context&.dig(:auth_manager)
-
-        unless auth_manager
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: {
-              success: false,
-              error: "認証マネージャーが利用できません"
-            }.to_json
-          }])
+        begin
+          auth_manager = extract_auth_manager(context)
+        rescue ArgumentError => e
+          return error_response(e.message).build
         end
 
         auth_url = auth_manager.get_auth_url
         instructions = auth_manager.get_auth_instructions
 
-        response_data = {
-          success: true,
+        success_response({
           auth_url: auth_url,
           instructions: instructions
-        }
-
-        MCP::Tool::Response.new([{
-          type: "text",
-          text: response_data.to_json
-        }])
+        })
       end
     end
   end
