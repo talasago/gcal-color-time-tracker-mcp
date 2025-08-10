@@ -3,7 +3,6 @@ require 'logger'
 require 'fileutils'
 require_relative 'token_manager'
 require_relative 'google_calendar_auth_manager'
-require_relative 'time_analyzer'
 require_relative 'tools/analyze_calendar_tool'
 require_relative 'tools/start_auth_tool'
 require_relative 'tools/check_auth_status_tool'
@@ -52,9 +51,6 @@ module CalendarColorMCP
       transport.open
     end
 
-    def get_calendar_colors
-      TimeAnalyzer::COLOR_NAMES.to_json
-    end
 
     private
 
