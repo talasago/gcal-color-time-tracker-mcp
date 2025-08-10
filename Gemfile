@@ -4,7 +4,6 @@ gem 'mcp'
 gem 'google-api-client'
 gem 'dotenv'
 gem 'json'
-gem 'digest'
 gem 'fileutils'
 
 group :development, :test do
