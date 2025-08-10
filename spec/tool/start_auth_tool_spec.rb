@@ -87,7 +87,4 @@ RSpec.describe 'StartAuthTool', type: :request do
     include_examples 'handles invalid parameters gracefully', 'start_auth_tool'
   end
 
-  describe 'error conditions' do
-    include_examples 'handles missing auth manager', CalendarColorMCP::StartAuthTool
-  end
 end

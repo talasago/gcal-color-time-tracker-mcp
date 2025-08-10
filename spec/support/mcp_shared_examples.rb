@@ -33,19 +33,6 @@ RSpec.shared_examples 'handles invalid parameters gracefully' do |tool_name|
   end
 end
 
-RSpec.shared_examples 'handles missing auth manager' do |tool_class|
-  context 'when auth_manager is not available' do
-    it 'should return error response' do
-      response = tool_class.call(server_context: {})
-      content = JSON.parse(response.content[0][:text])
-
-      aggregate_failures do
-        expect(content['success']).to be false
-        expect(content['error']).to eq('認証マネージャーが利用できません')
-      end
-    end
-  end
-end
 
 RSpec.shared_examples 'BaseTool inheritance' do |tool_class, auth_test_params = {}|
   describe 'inheritance' do

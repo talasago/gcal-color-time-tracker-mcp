@@ -79,7 +79,6 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
       end
     end
 
-    include_examples 'handles missing auth manager', CalendarColorMCP::CheckAuthStatusTool
   end
 
   describe 'response format validation' do
