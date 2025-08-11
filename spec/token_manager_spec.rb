@@ -178,35 +178,6 @@ describe CalendarColorMCP::TokenManager do
       end
     end
 
-    describe "#last_auth_time" do
-      context "when no token file exists" do
-        it "should return nil" do
-          expect(token_manager.last_auth_time).to be nil
-        end
-      end
-
-      context "when valid token file exists" do
-        before do
-          token_manager.save_credentials(mock_credentials)
-        end
-
-        it "should return formatted timestamp" do
-          auth_time = token_manager.last_auth_time
-
-          expect(auth_time).to match(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/)
-        end
-      end
-
-      context "when token file is corrupted" do
-        before do
-          File.write(token_manager.instance_variable_get(:@token_file_path), "invalid json")
-        end
-
-        it "should return nil" do
-          expect(token_manager.last_auth_time).to be nil
-        end
-      end
-    end
 
     describe "#clear_credentials" do
       context "when token file exists" do

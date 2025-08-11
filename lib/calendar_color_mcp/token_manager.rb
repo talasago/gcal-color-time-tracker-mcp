@@ -59,6 +59,7 @@ module CalendarColorMCP
     def load_credentials
       return nil unless File.exist?(@token_file_path)
 
+      # FIXME: ここ例外処理必要そう
       token_data = JSON.parse(File.read(@token_file_path))
 
       credentials = Google::Auth::UserRefreshCredentials.new(
@@ -74,16 +75,8 @@ module CalendarColorMCP
 
       credentials
     rescue JSON::ParserError, KeyError => e
+      # FIXME:これダメ
       puts "トークンファイルの読み込みエラー: #{e.message}"
-      nil
-    end
-
-    def last_auth_time
-      return nil unless File.exist?(@token_file_path)
-
-      token_data = JSON.parse(File.read(@token_file_path))
-      Time.at(token_data['saved_at']).strftime('%Y-%m-%d %H:%M:%S') if token_data['saved_at']
-    rescue
       nil
     end
 
@@ -98,6 +91,7 @@ module CalendarColorMCP
       return false unless credentials
 
       # 基本的な有効性チェック
+      # FIXME:必要なのか？と、今のままだと文字列を返すときがある
       credentials.access_token && credentials.refresh_token
     rescue
       false
