@@ -26,7 +26,6 @@ describe CalendarColorMCP::TokenManager do
     end
 
     before do
-      # テスト用のクリーンアップ
       token_manager.clear_credentials if token_manager.token_exist?
 
       # 環境変数のモック（デフォルトを設定してcall_originalを使用）
@@ -37,7 +36,6 @@ describe CalendarColorMCP::TokenManager do
     end
 
     after do
-      # テスト後のクリーンアップ
       token_manager.clear_credentials if token_manager.token_exist?
     end
 
@@ -157,10 +155,7 @@ describe CalendarColorMCP::TokenManager do
           File.write(token_manager.instance_variable_get(:@token_file_path), "invalid json")
         end
 
-        it "should return nil and output error message" do
-          expect { subject }
-            .to output(/トークンファイルの読み込みエラー/).to_stdout
-
+        it "should return nil" do
           expect(subject).to be nil
         end
       end
@@ -172,8 +167,14 @@ describe CalendarColorMCP::TokenManager do
             .and_raise(Errno::EACCES.new("Permission denied"))
         end
 
-        it "should handle permission errors gracefully" do
-          expect { subject }.to raise_error(Errno::EACCES)
+        after do
+          # 権限エラーのテストでは通常のクリーンアップをスキップ
+          allow(File).to receive(:read).and_call_original
+          token_manager.clear_credentials rescue nil
+        end
+
+        it "should raise RuntimeError with descriptive message" do
+          expect { subject }.to raise_error(RuntimeError, /トークンファイルへのアクセスに失敗しました/)
         end
       end
     end

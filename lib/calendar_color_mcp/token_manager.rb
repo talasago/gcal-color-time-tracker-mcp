@@ -49,20 +49,26 @@ module CalendarColorMCP
       error_msg = "トークンファイルの書き込み権限エラー: #{@token_file_path}\n" \
                   "現在のディレクトリ: #{Dir.pwd}\n" \
                   "エラー詳細: #{e.message}"
-      puts error_msg
+      puts error_msg if ENV['DEBUG'] == 'true'
       raise error_msg
     rescue => e
       error_msg = "トークンファイルの保存エラー: #{e.message}\n" \
                   "ファイルパス: #{@token_file_path}"
-      puts error_msg
+      puts error_msg if ENV['DEBUG'] == 'true'
       raise error_msg
     end
 
     def load_credentials
       return nil unless File.exist?(@token_file_path)
 
-      # FIXME: ここ例外処理必要そう
-      token_data = JSON.parse(File.read(@token_file_path))
+      begin
+        token_data = JSON.parse(File.read(@token_file_path))
+      rescue JSON::ParserError => e
+        STDERR.puts "トークンファイルが破損しています: #{e.message}" if ENV['DEBUG'] == 'true'
+        return nil
+      rescue Errno::EACCES, Errno::ENOENT => e
+        raise "トークンファイルへのアクセスに失敗しました: #{e.message}"
+      end
 
       credentials = Google::Auth::UserRefreshCredentials.new(
         client_id: ENV['GOOGLE_CLIENT_ID'],
@@ -76,9 +82,8 @@ module CalendarColorMCP
       end
 
       credentials
-    rescue JSON::ParserError, KeyError => e
-      # FIXME:これダメ
-      puts "トークンファイルの読み込みエラー: #{e.message}"
+    rescue KeyError => e
+      STDERR.puts "トークンファイルに必要なキーがありません: #{e.message}" if ENV['DEBUG'] == 'true'
       nil
     end
 
