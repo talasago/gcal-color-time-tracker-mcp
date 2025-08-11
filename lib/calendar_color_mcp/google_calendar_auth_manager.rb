@@ -11,27 +11,34 @@ module CalendarColorMCP
     include Singleton
     SCOPE = Google::Apis::CalendarV3::AUTH_CALENDAR_READONLY
     REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'  # OOB flow for CLI
+    AUTH_INSTRUCTIONS = [
+      "1. 上記URLにアクセスしてください",
+      "2. Googleアカウントでログインし、権限を許可してください",
+      "3. 表示された認証コードをコピーしてください",
+      "4. CompleteAuthTool を使用して認証コードを送信してください:",
+      "   - ツール名: CompleteAuthTool",
+      "   - パラメータ: auth_code = <認証コード>",
+      "",
+      "認証が完了すると、カレンダー分析が利用可能になります。"
+    ].join("\n").freeze
 
     def initialize
       @token_manager = TokenManager.instance
     end
 
     def get_auth_url
-      client_id = ENV['GOOGLE_CLIENT_ID']
-      client_secret = ENV['GOOGLE_CLIENT_SECRET']
-
       # 必要な環境変数のチェック
-      if client_id.nil? || client_id.empty?
+      if ENV['GOOGLE_CLIENT_ID'].nil? || ENV['GOOGLE_CLIENT_ID'].empty?
         raise "GOOGLE_CLIENT_ID が設定されていません。.env ファイルを確認してください。"
       end
 
-      if client_secret.nil? || client_secret.empty?
+      if ENV['GOOGLE_CLIENT_SECRET'].nil? || ENV['GOOGLE_CLIENT_SECRET'].empty?
         raise "GOOGLE_CLIENT_SECRET が設定されていません。.env ファイルを確認してください。"
       end
 
       # OAuth2の認証URLを直接構築
       params = {
-        'client_id' => client_id,
+        'client_id' => ENV['GOOGLE_CLIENT_ID'],
         'redirect_uri' => REDIRECT_URI,
         'scope' => SCOPE,
         'response_type' => 'code',
@@ -41,19 +48,6 @@ module CalendarColorMCP
 
       query_string = params.map { |k, v| "#{k}=#{CGI.escape(v.to_s)}" }.join('&')
       "https://accounts.google.com/o/oauth2/auth?#{query_string}"
-    end
-
-    def get_auth_instructions
-      [
-          "1. 上記URLにアクセスしてください",
-          "2. Googleアカウントでログインし、権限を許可してください",
-          "3. 表示された認証コードをコピーしてください",
-          "4. CompleteAuthTool を使用して認証コードを送信してください:",
-          "   - ツール名: CompleteAuthTool",
-          "   - パラメータ: auth_code = <認証コード>",
-          "",
-          "認証が完了すると、カレンダー分析が利用可能になります。"
-      ].join("\n")
     end
 
     def complete_auth(auth_code)
