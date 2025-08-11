@@ -20,79 +20,33 @@ RSpec.describe CalendarColorMCP::ColorFilterManager do
   let(:filter_manager) { described_class.new(**init_params) }
 
   describe '#filter_events' do
-    let(:target_events) { events }
-    subject { filter_manager.filter_events(target_events) }
-    context 'when no filters are set' do
-      let(:init_params) { {} }
-
-      it 'returns all events' do
-        expect(subject.length).to eq(events.length)
-        expect(subject).to eq(events)
+    let(:actual_target_events) do
+      case target_events_override
+      when :nil_events
+        [mock_event(nil)]
+      else
+        events
       end
     end
+    subject { filter_manager.filter_events(actual_target_events) }
 
-    context 'when include_colors is set' do
-      let(:init_params) { { include_colors: [1, 3] } }
-
-      it 'returns only events with specified colors' do
-        expect(subject.length).to eq(2)
-        expect(subject.map(&:color_id)).to match_array(['1', '3'])
-      end
+    where(:case_name, :init_params, :target_events_override, :expected_length, :expected_color_ids) do
+      [
+        ['no filters set', {}, nil, 6, ['1', '2', '3', '4', '5', nil]],
+        ['include specific colors', { include_colors: [1, 3] }, nil, 2, ['1', '3']],
+        ['exclude specific colors', { exclude_colors: [1, 2] }, nil, 4, ['3', '4', '5', nil]],
+        ['both include and exclude (exclude prioritized)', { include_colors: [1, 2, 3], exclude_colors: [2] }, nil, 2, ['1', '3']],
+        ['include default color with nil events', { include_colors: [9] }, :nil_events, 1, [nil]],
+        ['exclude default color with nil events', { exclude_colors: [9] }, :nil_events, 0, []],
+        ['include with color names', { include_colors: ['薄紫', '紫'] }, nil, 2, ['1', '3']],
+        ['mixed color IDs and names', { include_colors: [1, '紫'] }, nil, 2, ['1', '3']]
+      ]
     end
 
-    context 'when exclude_colors is set' do
-      let(:init_params) { { exclude_colors: [1, 2] } }
-
-      it 'returns events excluding specified colors' do
-        expect(subject.length).to eq(4)
-        expect(subject.map(&:color_id)).to match_array(['3', '4', '5', nil])
-      end
-    end
-
-    context 'when both include and exclude colors are set' do
-      let(:init_params) { { include_colors: [1, 2, 3], exclude_colors: [2] } }
-
-      it 'prioritizes exclude over include' do
-        expect(subject.length).to eq(2)
-        expect(subject.map(&:color_id)).to match_array(['1', '3'])
-      end
-    end
-
-    context 'when events have nil color_id (default color)' do
-      let(:target_events) { [mock_event(nil)] }
-
-      context 'when default color is included' do
-        let(:init_params) { { include_colors: [9] } } # 青（デフォルト色）
-
-        it 'includes default color events' do
-          expect(subject.length).to eq(1)
-        end
-      end
-
-      context 'when default color is excluded' do
-        let(:init_params) { { exclude_colors: [9] } } # 青（デフォルト色）
-
-        it 'excludes default color events' do
-          expect(subject.length).to eq(0)
-        end
-      end
-    end
-
-    context 'when using color names' do
-      let(:init_params) { { include_colors: ['薄紫', '紫'] } }
-
-      it 'returns events with specified color names' do
-        expect(subject.length).to eq(2)
-        expect(subject.map(&:color_id)).to match_array(['1', '3'])
-      end
-    end
-
-    context 'when using mixed color IDs and names' do
-      let(:init_params) { { include_colors: [1, '紫'] } }
-
-      it 'filters correctly with mixed specification' do
-        expect(subject.length).to eq(2)
-        expect(subject.map(&:color_id)).to match_array(['1', '3'])
+    with_them do
+      it 'filters events correctly' do
+        expect(subject.length).to eq(expected_length)
+        expect(subject.map(&:color_id)).to match_array(expected_color_ids)
       end
     end
   end
