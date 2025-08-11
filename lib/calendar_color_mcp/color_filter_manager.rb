@@ -6,27 +6,11 @@ module CalendarColorMCP
     def initialize(include_colors: nil, exclude_colors: nil)
       @include_color_ids = normalize_colors(include_colors)
       @exclude_color_ids = normalize_colors(exclude_colors)
-      
+
       validate_colors(@include_color_ids, 'include_colors') if @include_color_ids
       validate_colors(@exclude_color_ids, 'exclude_colors') if @exclude_color_ids
     end
 
-    def should_include_color?(color_id)
-      color_id = color_id&.to_i || ColorConstants.default_color_id
-
-      # excludeが指定されていて、その中に含まれる場合は除外
-      if @exclude_color_ids && @exclude_color_ids.include?(color_id)
-        return false
-      end
-
-      # includeが指定されていて、その中に含まれない場合は除外
-      if @include_color_ids && !@include_color_ids.include?(color_id)
-        return false
-      end
-
-      # その他の場合は含める
-      true
-    end
 
     def filter_events(events)
       filtered_events = events.select do |event|
@@ -42,7 +26,7 @@ module CalendarColorMCP
         STDERR.puts "全イベント数: #{events.length}"
         STDERR.puts "フィルタリング後: #{filtered_events.length}"
         STDERR.puts "除外イベント数: #{events.length - filtered_events.length}"
-        
+
         # 除外されたイベントの詳細
         excluded_events = events - filtered_events
         if excluded_events.any?
@@ -98,6 +82,23 @@ module CalendarColorMCP
       return nil unless color_ids
 
       color_ids.map { |id| "#{ColorConstants.color_name(id)}(#{id})" }.join(', ')
+    end
+
+    def should_include_color?(color_id)
+      color_id = color_id&.to_i || ColorConstants.default_color_id
+
+      # excludeが指定されていて、その中に含まれる場合は除外
+      if @exclude_color_ids && @exclude_color_ids.include?(color_id)
+        return false
+      end
+
+      # includeが指定されていて、その中に含まれない場合は除外
+      if @include_color_ids && !@include_color_ids.include?(color_id)
+        return false
+      end
+
+      # その他の場合は含める
+      true
     end
   end
 end
