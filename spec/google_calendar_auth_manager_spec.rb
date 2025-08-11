@@ -26,9 +26,14 @@ describe CalendarColorMCP::GoogleCalendarAuthManager do
 
         it "should return a valid Google OAuth URL" do
           url = auth_manager.get_auth_url
-          expect(url).to include('https://accounts.google.com/o/oauth2/auth')
-          expect(url).to include('client_id=test_client_id')
-          expect(url).to include('response_type=code')
+          expected_url = 'https://accounts.google.com/o/oauth2/auth?' \
+                        'client_id=test_client_id&' \
+                        'redirect_uri=urn%3Aietf%3Awg%3Aoauth%3A2.0%3Aoob&' \
+                        'scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.readonly&' \
+                        'response_type=code&' \
+                        'access_type=offline&' \
+                        'prompt=consent'
+          expect(url).to eq(expected_url)
         end
       end
     end
