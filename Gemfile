@@ -8,6 +8,7 @@ gem 'fileutils'
 
 group :development, :test do
   gem 'rspec'
+  gem 'rspec-parameterized'
   gem 'pry'
   gem 'solargraph'
 end

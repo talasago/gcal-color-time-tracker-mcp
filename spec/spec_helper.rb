@@ -1,4 +1,5 @@
 require 'rspec'
+require 'rspec-parameterized'
 require 'dotenv/load'
 
 RSpec.configure do |config|
