@@ -19,12 +19,10 @@ module CalendarColorMCP
           return error_response(e.message).build
         end
 
-        auth_url = auth_manager.get_auth_url
-        instructions = GoogleCalendarAuthManager::AUTH_INSTRUCTIONS
 
         success_response({
-          auth_url: auth_url,
-          instructions: instructions
+          auth_url: auth_manager.get_auth_url,
+          instructions: auth_manager.get_auth_instructions
         })
       end
     end

@@ -50,6 +50,10 @@ module CalendarColorMCP
       "https://accounts.google.com/o/oauth2/auth?#{query_string}"
     end
 
+    def get_auth_instructions
+      AUTH_INSTRUCTIONS
+    end
+
     def complete_auth(auth_code)
       client_id = Google::Auth::ClientId.new(
         ENV['GOOGLE_CLIENT_ID'],
