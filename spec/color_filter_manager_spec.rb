@@ -100,4 +100,32 @@ RSpec.describe CalendarColorMCP::ColorFilterManager do
       end
     end
   end
+
+  describe '#get_filtering_summary' do
+    let(:filter_manager) { described_class.new(**init_params) }
+    subject { filter_manager.get_filtering_summary }
+
+    where(:case_name, :init_params, :expected_include_colors, :expected_exclude_colors, :expected_has_filters) do
+      [
+        ['no filters set', {}, nil, nil, nil],
+        ['single include color ID', { include_colors: [1] }, '薄紫(1)', nil, [1]],
+        ['multiple include color IDs', { include_colors: [1, 3, 5] }, '薄紫(1), 紫(3), 黄(5)', nil, [1, 3, 5]],
+        ['include color names', { include_colors: ['緑', '赤'] }, '緑(2), 赤(4)', nil, [2, 4]],
+        ['mixed include colors', { include_colors: [1, '緑', 5] }, '薄紫(1), 緑(2), 黄(5)', nil, [1, 2, 5]],
+        ['single exclude color ID', { exclude_colors: [2] }, nil, '緑(2)', [2]],
+        ['multiple exclude color IDs', { exclude_colors: [2, 4, 6] }, nil, '緑(2), 赤(4), オレンジ(6)', [2, 4, 6]],
+        ['exclude color names', { exclude_colors: ['紫', '青'] }, nil, '紫(3), 青(9)', [3, 9]],
+        ['mixed exclude colors', { exclude_colors: [2, '赤', 6] }, nil, '緑(2), 赤(4), オレンジ(6)', [2, 4, 6]],
+        ['both include and exclude colors', { include_colors: [1, 3], exclude_colors: [2, 4] }, '薄紫(1), 紫(3)', '緑(2), 赤(4)', [1, 3]]
+      ]
+    end
+
+    with_them do
+      it 'returns correct summary' do
+        expect(subject[:include_colors]).to eq(expected_include_colors)
+        expect(subject[:exclude_colors]).to eq(expected_exclude_colors)
+        expect(subject[:has_filters]).to eq(expected_has_filters)
+      end
+    end
+  end
 end
