@@ -45,7 +45,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
   describe 'authentication handling' do
     let(:mock_auth_manager) do
       instance_double('CalendarColorMCP::GoogleCalendarAuthManager').tap do |mock|
-        allow(mock).to receive(:authenticated?).and_return(is_authenticated)
+        allow(mock).to receive(:token_exist?).and_return(is_token_exist)
         allow(mock).to receive(:get_auth_url).and_return('https://accounts.google.com/oauth/authorize?...')
       end
     end
@@ -65,7 +65,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
 
     context 'when user is not authenticated' do
       include_context 'unauthenticated user'
-      let(:is_authenticated) { false }
+      let(:is_token_exist) { false }
 
       it 'should return authentication required message' do
         response = CalendarColorMCP::AnalyzeCalendarTool.call(
@@ -85,7 +85,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
 
     context 'when user is authenticated' do
       include_context 'calendar analysis setup'
-      let(:is_authenticated) { true }
+      let(:is_token_exist) { true }
       let(:mock_events) { [] }
 
       it 'should process calendar analysis successfully' do
@@ -158,7 +158,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
 
   describe 'color filtering' do
     include_context 'calendar analysis setup'
-    
+
     before do
       # Override mock_filter to return has_filters: true for these tests
       mock_filter = instance_double('CalendarColorMCP::ColorFilterManager')

@@ -19,7 +19,7 @@ module CalendarColorMCP
           return error_response(e.message).build
         end
 
-        authenticated = auth_manager.authenticated?
+        authenticated = auth_manager.token_exist?
 
         result = {
           authenticated: authenticated

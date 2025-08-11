@@ -56,7 +56,7 @@ module CalendarColorMCP
         start_date = Date.parse(start_date)
         end_date = Date.parse(end_date)
 
-        unless auth_manager.authenticated?
+        unless auth_manager.token_exist?
           auth_url = auth_manager.get_auth_url
           return error_response("認証が必要です").with(:auth_url, auth_url).build
         end

@@ -87,8 +87,8 @@ module CalendarColorMCP
       }
     end
 
-    def authenticated?
-      @token_manager.authenticated?
+    def token_exist?
+      @token_manager.token_exist?
     end
 
     def clear_auth

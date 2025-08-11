@@ -22,8 +22,10 @@ module CalendarColorMCP
       end
     end
 
-    def authenticated?
-      File.exist?(@token_file_path) && valid_token?
+    def token_exist?
+      !load_credentials.nil?
+    rescue
+      false
     end
 
     def save_credentials(credentials)
@@ -82,19 +84,6 @@ module CalendarColorMCP
 
     def clear_credentials
       File.delete(@token_file_path) if File.exist?(@token_file_path)
-    end
-
-    private
-
-    def valid_token?
-      credentials = load_credentials
-      return false unless credentials
-
-      # 基本的な有効性チェック
-      # FIXME:必要なのか？と、今のままだと文字列を返すときがある
-      credentials.access_token && credentials.refresh_token
-    rescue
-      false
     end
   end
 end

@@ -27,7 +27,7 @@ describe CalendarColorMCP::TokenManager do
 
     before do
       # テスト用のクリーンアップ
-      token_manager.clear_credentials if token_manager.authenticated?
+      token_manager.clear_credentials if token_manager.token_exist?
 
       # 環境変数のモック（デフォルトを設定してcall_originalを使用）
       allow(ENV).to receive(:[]).and_call_original
@@ -38,10 +38,10 @@ describe CalendarColorMCP::TokenManager do
 
     after do
       # テスト後のクリーンアップ
-      token_manager.clear_credentials if token_manager.authenticated?
+      token_manager.clear_credentials if token_manager.token_exist?
     end
 
-    describe "#authenticated?" do
+    describe "#token_exist?" do
       let(:invalid_credentials_no_access) do
         double('credentials',
           access_token: nil,
@@ -60,11 +60,11 @@ describe CalendarColorMCP::TokenManager do
 
       where(:case_name, :setup_action, :expected_result) do
         [
-          ["no token file exists", :no_file, false], # File.exist?がfalseなので
-          ["valid token file exists", :valid_file, "test_refresh_token"], # valid_token?が文字列を返す
+          ["no token file exists", :no_file, false],
+          ["valid token file exists", :valid_file, true],
           ["invalid token file exists", :invalid_file, false],
-          ["credentials missing access token", :missing_access_token, nil],# access_tokenがnilなので
-          ["credentials missing refresh token", :missing_refresh_token, nil]# refresh_tokenがnilなので
+          ["credentials missing access token", :missing_access_token, true],
+          ["credentials missing refresh token", :missing_refresh_token, true]
         ]
       end
 
@@ -84,7 +84,7 @@ describe CalendarColorMCP::TokenManager do
         end
 
         it "should return #{params[:expected_result]} when #{params[:case_name]}" do
-          expect(token_manager.authenticated?).to eq(expected_result)
+          expect(token_manager.token_exist?).to eq(expected_result)
         end
       end
     end
