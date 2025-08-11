@@ -17,92 +17,87 @@ RSpec.describe CalendarColorMCP::ColorFilterManager do
     ]
   end
 
+  let(:filter_manager) { described_class.new(**init_params) }
+
   describe '#filter_events' do
-    context 'フィルターが指定されていない場合' do
-      let(:filter_manager) { described_class.new }
+    let(:target_events) { events }
+    subject { filter_manager.filter_events(target_events) }
+    context 'when no filters are set' do
+      let(:init_params) { {} }
 
-      it '全てのイベントを返す' do
-        result = filter_manager.filter_events(events)
-        expect(result.length).to eq(events.length)
-        expect(result).to eq(events)
+      it 'returns all events' do
+        expect(subject.length).to eq(events.length)
+        expect(subject).to eq(events)
       end
     end
 
-    context 'include_colorsが指定されている場合' do
-      let(:filter_manager) { described_class.new(include_colors: [1, 3]) }
+    context 'when include_colors is set' do
+      let(:init_params) { { include_colors: [1, 3] } }
 
-      it '指定された色のイベントのみを返す' do
-        result = filter_manager.filter_events(events)
-        expect(result.length).to eq(2)
-        expect(result.map(&:color_id)).to match_array(['1', '3'])
+      it 'returns only events with specified colors' do
+        expect(subject.length).to eq(2)
+        expect(subject.map(&:color_id)).to match_array(['1', '3'])
       end
     end
 
-    context 'exclude_colorsが指定されている場合' do
-      let(:filter_manager) { described_class.new(exclude_colors: [1, 2]) }
+    context 'when exclude_colors is set' do
+      let(:init_params) { { exclude_colors: [1, 2] } }
 
-      it '指定された色以外のイベントを返す' do
-        result = filter_manager.filter_events(events)
-        expect(result.length).to eq(4)
-        expect(result.map(&:color_id)).to match_array(['3', '4', '5', nil])
+      it 'returns events excluding specified colors' do
+        expect(subject.length).to eq(4)
+        expect(subject.map(&:color_id)).to match_array(['3', '4', '5', nil])
       end
     end
 
-    context 'includeとexcludeの両方が指定されている場合' do
-      let(:filter_manager) { described_class.new(include_colors: [1, 2, 3], exclude_colors: [2]) }
+    context 'when both include and exclude colors are set' do
+      let(:init_params) { { include_colors: [1, 2, 3], exclude_colors: [2] } }
 
-      it 'excludeが優先される' do
-        result = filter_manager.filter_events(events)
-        expect(result.length).to eq(2)
-        expect(result.map(&:color_id)).to match_array(['1', '3'])
+      it 'prioritizes exclude over include' do
+        expect(subject.length).to eq(2)
+        expect(subject.map(&:color_id)).to match_array(['1', '3'])
       end
     end
 
-    context 'color_idがnilのイベント（デフォルト色）' do
-      let(:events_with_nil) { [mock_event(nil)] }
+    context 'when events have nil color_id (default color)' do
+      let(:target_events) { [mock_event(nil)] }
 
-      context 'デフォルト色が含まれる場合' do
-        let(:filter_manager) { described_class.new(include_colors: [9]) } # 青（デフォルト色）
+      context 'when default color is included' do
+        let(:init_params) { { include_colors: [9] } } # 青（デフォルト色）
 
-        it 'デフォルト色のイベントが含まれる' do
-          result = filter_manager.filter_events(events_with_nil)
-          expect(result.length).to eq(1)
+        it 'includes default color events' do
+          expect(subject.length).to eq(1)
         end
       end
 
-      context 'デフォルト色が除外される場合' do
-        let(:filter_manager) { described_class.new(exclude_colors: [9]) } # 青（デフォルト色）
+      context 'when default color is excluded' do
+        let(:init_params) { { exclude_colors: [9] } } # 青（デフォルト色）
 
-        it 'デフォルト色のイベントが除外される' do
-          result = filter_manager.filter_events(events_with_nil)
-          expect(result.length).to eq(0)
+        it 'excludes default color events' do
+          expect(subject.length).to eq(0)
         end
       end
     end
 
-    context '色名での指定' do
-      let(:filter_manager) { described_class.new(include_colors: ['薄紫', '紫']) }
+    context 'when using color names' do
+      let(:init_params) { { include_colors: ['薄紫', '紫'] } }
 
-      it '色名で指定された色のイベントを返す' do
-        result = filter_manager.filter_events(events)
-        expect(result.length).to eq(2)
-        expect(result.map(&:color_id)).to match_array(['1', '3'])
+      it 'returns events with specified color names' do
+        expect(subject.length).to eq(2)
+        expect(subject.map(&:color_id)).to match_array(['1', '3'])
       end
     end
 
-    context '色IDと色名の混在指定' do
-      let(:filter_manager) { described_class.new(include_colors: [1, '紫']) }
+    context 'when using mixed color IDs and names' do
+      let(:init_params) { { include_colors: [1, '紫'] } }
 
-      it '混在指定で正しくフィルタリングされる' do
-        result = filter_manager.filter_events(events)
-        expect(result.length).to eq(2)
-        expect(result.map(&:color_id)).to match_array(['1', '3'])
+      it 'filters correctly with mixed specification' do
+        expect(subject.length).to eq(2)
+        expect(subject.map(&:color_id)).to match_array(['1', '3'])
       end
     end
   end
 
   describe '#get_filtering_summary' do
-    let(:filter_manager) { described_class.new(**init_params) }
     subject { filter_manager.get_filtering_summary }
 
     where(:case_name, :init_params, :expected_include_colors, :expected_exclude_colors, :expected_has_filters) do
