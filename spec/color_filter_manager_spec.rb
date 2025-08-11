@@ -6,6 +6,7 @@ RSpec.describe CalendarColorMCP::ColorFilterManager do
     double('event', color_id: color_id, summary: summary)
   end
 
+  # FIXME:eventsの型や内容がわからないからこれでいいのかわからない
   let(:events) do
     [
       mock_event('1'),  # 薄紫

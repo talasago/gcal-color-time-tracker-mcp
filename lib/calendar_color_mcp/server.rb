@@ -46,11 +46,11 @@ module CalendarColorMCP
       end
     end
 
+    # FIXME: ここで呼び出し失敗時のエラーハンドリングがあってもよさそう
     def run
       transport = MCP::Server::Transports::StdioTransport.new(@server)
       transport.open
     end
-
 
     private
 
