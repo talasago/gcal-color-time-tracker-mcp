@@ -55,7 +55,7 @@ module CalendarColorMCP
     end
 
     def calculate_duration(event)
-      if ENV['DEBUG']
+      if ENV['DEBUG'] == 'true'
         STDERR.puts "\n--- 時間計算デバッグ ---"
         STDERR.puts "イベント: #{event.summary}"
         STDERR.puts "start.date_time: #{event.start.date_time.inspect}"
@@ -66,14 +66,14 @@ module CalendarColorMCP
 
       duration = if event.start.date_time && event.end.date_time
         # 通常のイベント（時刻指定）
-        if ENV['DEBUG']
+        if ENV['DEBUG'] == 'true'
           STDERR.puts "判定: 時刻指定イベント"
         end
         duration_seconds = event.end.date_time - event.start.date_time
         # Rationalを秒数に変換（1日 = 86400秒）
         duration_seconds_float = duration_seconds * 86400
         calculated_duration = duration_seconds_float / 3600.0
-        if ENV['DEBUG']
+        if ENV['DEBUG'] == 'true'
           STDERR.puts "duration_seconds (Rational): #{duration_seconds}"
           STDERR.puts "duration_seconds_float: #{duration_seconds_float}秒"
           STDERR.puts "calculated_duration: #{calculated_duration}時間"
@@ -81,13 +81,13 @@ module CalendarColorMCP
         calculated_duration
       elsif event.start.date && event.end.date
         # 終日イベント
-        if ENV['DEBUG']
+        if ENV['DEBUG'] == 'true'
           STDERR.puts "判定: 終日イベント"
         end
         start_date = Date.parse(event.start.date)
         end_date = Date.parse(event.end.date)
         calculated_duration = (end_date - start_date).to_i * 24.0
-        if ENV['DEBUG']
+        if ENV['DEBUG'] == 'true'
           STDERR.puts "start_date: #{start_date}"
           STDERR.puts "end_date: #{end_date}"
           STDERR.puts "日数: #{(end_date - start_date).to_i}"
@@ -96,13 +96,13 @@ module CalendarColorMCP
         calculated_duration
       else
         # その他（時間不明）
-        if ENV['DEBUG']
+        if ENV['DEBUG'] == 'true'
           STDERR.puts "判定: 時間不明"
         end
         0.0
       end
 
-      if ENV['DEBUG']
+      if ENV['DEBUG'] == 'true'
         STDERR.puts "最終duration: #{duration}時間"
         STDERR.puts "---"
       end
