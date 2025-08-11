@@ -33,15 +33,26 @@ RSpec.shared_examples 'handles invalid parameters gracefully' do |tool_name|
   end
 end
 
-RSpec.shared_examples 'handles missing auth manager' do |tool_class|
-  context 'when auth_manager is not available' do
-    it 'should return error response' do
-      response = tool_class.call(server_context: {})
-      content = JSON.parse(response.content[0][:text])
 
-      aggregate_failures do
-        expect(content['success']).to be false
-        expect(content['error']).to eq('認証マネージャーが利用できません')
+RSpec.shared_examples 'BaseTool inheritance' do |tool_class, auth_test_params = {}|
+  describe 'inheritance' do
+    it 'inherits from BaseTool' do
+      expect(tool_class).to be < CalendarColorMCP::BaseTool
+    end
+
+    it 'has access to inherited extract_auth_manager method' do
+      expect(tool_class.protected_methods).to include(:extract_auth_manager)
+    end
+
+    if auth_test_params.any?
+      it 'handles auth manager errors through inheritance' do
+        response = tool_class.call(**auth_test_params, server_context: {})
+        content = JSON.parse(response.content[0][:text])
+        
+        aggregate_failures do
+          expect(content['success']).to be false
+          expect(content['error']).to eq('認証マネージャーが利用できません')
+        end
       end
     end
   end

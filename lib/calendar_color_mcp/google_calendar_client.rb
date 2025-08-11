@@ -3,6 +3,7 @@ require 'googleauth'
 require 'date'
 require 'time'
 require_relative 'token_manager'
+require_relative 'errors'
 
 module CalendarColorMCP
   class GoogleCalendarClient
@@ -10,12 +11,14 @@ module CalendarColorMCP
 
     def initialize
       @service = Google::Apis::CalendarV3::CalendarService.new
-      @token_manager = TokenManager.new
-      authorize_service
-      @user_email = get_user_email
+      @token_manager = TokenManager.instance
+      @authenticated = false
     end
 
+    # FIXME:ビジネスロジックが含まれていることが問題
     def get_events(start_date, end_date)
+      authenticate
+
       start_time = Time.new(start_date.year, start_date.month, start_date.day, 0, 0, 0)
       end_time = Time.new(end_date.year, end_date.month, end_date.day, 23, 59, 59)
 
@@ -53,12 +56,29 @@ module CalendarColorMCP
 
       attended_events
     rescue Google::Apis::AuthorizationError => e
-      raise e
+      raise AuthenticationError, "認証の更新が必要です: #{e.message}"
+    rescue Google::Apis::ClientError, Google::Apis::ServerError => e
+      raise CalendarApiError, "カレンダーAPIエラー: #{e.message}"
     rescue => e
-      raise "カレンダーイベントの取得に失敗しました: #{e.message}"
+      raise CalendarApiError, "カレンダーイベントの取得に失敗しました: #{e.message}"
     end
 
     private
+
+    def authenticate
+      return true if @authenticated
+
+      begin
+        authorize_service
+        @user_email = get_user_email
+        @authenticated = true
+        true
+      rescue
+        @authenticated = false
+        @user_email = nil
+        raise
+      end
+    end
 
     def get_user_email
       calendar_info = @service.get_calendar('primary')
@@ -80,8 +100,8 @@ module CalendarColorMCP
       return true if event.attendees.nil? || event.attendees.empty?
 
       # 参加者リストから自分の参加状況を確認
-      user_attendee = event.attendees.find { |attendee| 
-        attendee.email == @user_email || attendee.self 
+      user_attendee = event.attendees.find { |attendee|
+        attendee.email == @user_email || attendee.self
       }
 
       if user_attendee
@@ -97,12 +117,12 @@ module CalendarColorMCP
       if event.organizer&.self
         "主催者"
       elsif event.attendees.nil? || event.attendees.empty?
-        "プライベートイベント"  
+        "プライベートイベント"
       else
-        user_attendee = event.attendees.find { |attendee| 
-          attendee.email == @user_email || attendee.self 
+        user_attendee = event.attendees.find { |attendee|
+          attendee.email == @user_email || attendee.self
         }
-        
+
         if user_attendee
           case user_attendee.response_status
           when 'accepted' then '参加承認'
@@ -119,15 +139,21 @@ module CalendarColorMCP
 
     def authorize_service
       credentials = @token_manager.load_credentials
-      raise Google::Apis::AuthorizationError, "認証情報が見つかりません" unless credentials
+      raise AuthenticationError, "認証情報が見つかりません" unless credentials
 
       @service.authorization = credentials
 
       # トークンの有効性確認
       if credentials.expired?
-        credentials.refresh!
+        begin
+          credentials.refresh!
+        rescue Google::Apis::AuthorizationError => e
+          raise AuthenticationError, "トークンの更新に失敗しました: #{e.message}"
+        end
         @token_manager.save_credentials(credentials)
       end
+    rescue Google::Apis::AuthorizationError => e
+      raise AuthenticationError, "認証エラー: #{e.message}"
     end
   end
 end

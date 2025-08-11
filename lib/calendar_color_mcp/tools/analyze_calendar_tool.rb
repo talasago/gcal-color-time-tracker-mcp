@@ -1,12 +1,15 @@
 require 'mcp'
+require_relative 'base_tool'
 require_relative '../google_calendar_client'
 require_relative '../time_analyzer'
 require_relative '../color_filter_manager'
+require_relative '../color_constants'
+require_relative '../errors'
 
 module CalendarColorMCP
-  class AnalyzeCalendarTool < MCP::Tool
+  class AnalyzeCalendarTool < BaseTool
     description "指定期間のGoogleカレンダーイベントを色別に時間集計します"
-    
+
     input_schema(
       type: "object",
       properties: {
@@ -24,17 +27,17 @@ module CalendarColorMCP
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
-              { type: "string", enum: ["薄紫", "緑", "紫", "赤", "黄", "オレンジ", "水色", "灰色", "青", "濃い緑", "濃い赤"] }
+              { type: "string", enum: ColorConstants.color_names_array }
             ]
           }
         },
         exclude_colors: {
-          type: "array", 
+          type: "array",
           description: "集計除外の色（色ID(1-11)またはカラー名を指定）",
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
-              { type: "string", enum: ["薄紫", "緑", "紫", "赤", "黄", "オレンジ", "水色", "灰色", "青", "濃い緑", "濃い赤"] }
+              { type: "string", enum: ColorConstants.color_names_array }
             ]
           }
         }
@@ -44,41 +47,24 @@ module CalendarColorMCP
 
     class << self
       def call(start_date:, end_date:, include_colors: nil, exclude_colors: nil, **context)
-        server_context = context[:server_context]
-        auth_manager = server_context&.dig(:auth_manager)
-      
-        unless auth_manager
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: {
-              success: false,
-              error: "認証マネージャーが利用できません"
-            }.to_json
-          }])
+        begin
+          auth_manager = extract_auth_manager(context)
+        rescue ArgumentError => e
+          return error_response(e.message).build
         end
 
         start_date = Date.parse(start_date)
         end_date = Date.parse(end_date)
 
-        # 認証確認
-        unless auth_manager.authenticated?
+        unless auth_manager.token_exist?
           auth_url = auth_manager.get_auth_url
-          return MCP::Tool::Response.new([{
-            type: "text",
-            text: {
-              success: false,
-              error: "認証が必要です",
-              auth_url: auth_url
-            }.to_json
-          }])
+          return error_response("認証が必要です").with(:auth_url, auth_url).build
         end
 
-        # 分析実行
         begin
           client = GoogleCalendarClient.new
           events = client.get_events(start_date, end_date)
 
-          # 色フィルタリングの設定
           color_filter = ColorFilterManager.new(
             include_colors: include_colors,
             exclude_colors: exclude_colors
@@ -87,8 +73,7 @@ module CalendarColorMCP
           analyzer = TimeAnalyzer.new
           result = analyzer.analyze(events, start_date, end_date, color_filter: color_filter)
 
-          response_data = {
-            success: true,
+          success_response({
             period: {
               start_date: start_date.to_s,
               end_date: end_date.to_s,
@@ -98,30 +83,14 @@ module CalendarColorMCP
             analysis: result[:color_breakdown],
             summary: result[:summary],
             formatted_output: format_analysis_output(result, color_filter)
-          }
-
-          MCP::Tool::Response.new([{
-            type: "text",
-            text: response_data.to_json
-          }])
-        rescue Google::Apis::AuthorizationError
+          })
+        rescue AuthenticationError => e
           auth_url = auth_manager.get_auth_url
-          MCP::Tool::Response.new([{
-            type: "text",
-            text: {
-              success: false,
-              error: "認証の更新が必要です",
-              auth_url: auth_url
-            }.to_json
-          }])
+          return error_response(e.message).with(:auth_url, auth_url).build
+        rescue CalendarApiError => e
+          return error_response(e.message).build
         rescue => e
-          MCP::Tool::Response.new([{
-            type: "text",
-            text: {
-              success: false,
-              error: e.message
-            }.to_json
-          }])
+          error_response("予期しないエラーが発生しました: #{e.message}").build
         end
       end
 

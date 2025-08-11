@@ -44,8 +44,8 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
 
   describe 'authentication handling' do
     let(:mock_auth_manager) do
-      instance_double('CalendarColorMCP::SimpleAuthManager').tap do |mock|
-        allow(mock).to receive(:authenticated?).and_return(is_authenticated)
+      instance_double('CalendarColorMCP::GoogleCalendarAuthManager').tap do |mock|
+        allow(mock).to receive(:token_exist?).and_return(is_token_exist)
         allow(mock).to receive(:get_auth_url).and_return('https://accounts.google.com/oauth/authorize?...')
       end
     end
@@ -58,25 +58,14 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
 
     let(:server_context) { { auth_manager: mock_auth_manager, calendar_client: mock_calendar_client } }
 
-    context 'when auth_manager is not available' do
-      it 'should return error response' do
-        response = CalendarColorMCP::AnalyzeCalendarTool.call(
-          start_date: "2024-01-01",
-          end_date: "2024-01-31",
-          server_context: {}
-        )
-        content = JSON.parse(response.content[0][:text])
-
-        aggregate_failures do
-          expect(content['success']).to be false
-          expect(content['error']).to eq('認証マネージャーが利用できません')
-        end
-      end
-    end
+    include_examples 'BaseTool inheritance', CalendarColorMCP::AnalyzeCalendarTool, {
+      start_date: "2024-01-01",
+      end_date: "2024-01-31"
+    }
 
     context 'when user is not authenticated' do
       include_context 'unauthenticated user'
-      let(:is_authenticated) { false }
+      let(:is_token_exist) { false }
 
       it 'should return authentication required message' do
         response = CalendarColorMCP::AnalyzeCalendarTool.call(
@@ -96,7 +85,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
 
     context 'when user is authenticated' do
       include_context 'calendar analysis setup'
-      let(:is_authenticated) { true }
+      let(:is_token_exist) { true }
       let(:mock_events) { [] }
 
       it 'should process calendar analysis successfully' do
@@ -169,7 +158,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
 
   describe 'color filtering' do
     include_context 'calendar analysis setup'
-    
+
     before do
       # Override mock_filter to return has_filters: true for these tests
       mock_filter = instance_double('CalendarColorMCP::ColorFilterManager')

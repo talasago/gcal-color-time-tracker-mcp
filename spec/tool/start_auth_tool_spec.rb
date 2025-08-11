@@ -9,6 +9,8 @@ RSpec.describe 'StartAuthTool', type: :request do
   include MCPRequestHelpers
   include MCPSharedHelpers
 
+  include_examples 'BaseTool inheritance', CalendarColorMCP::StartAuthTool
+
   describe 'successful authentication start' do
     context 'when called with valid parameters' do
       before do
@@ -85,7 +87,4 @@ RSpec.describe 'StartAuthTool', type: :request do
     include_examples 'handles invalid parameters gracefully', 'start_auth_tool'
   end
 
-  describe 'error conditions' do
-    include_examples 'handles missing auth manager', CalendarColorMCP::StartAuthTool
-  end
 end

@@ -102,7 +102,7 @@ RSpec.describe 'Calendar Flow Integration', type: :integration do
 
           # Auth status might show not authenticated or indicate token issues
           auth_status_content = JSON.parse(responses[1]['result']['content'][0]['text'])
-          expect(auth_status_content['authenticated']).to eq 'test_refresh_token'
+          expect(auth_status_content['authenticated']).to be true
 
           # Analysis should fail due to expired token
           analysis_response = responses[2]

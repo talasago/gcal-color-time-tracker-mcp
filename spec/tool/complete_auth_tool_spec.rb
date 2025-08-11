@@ -8,6 +8,10 @@ RSpec.describe 'CompleteAuthTool', type: :request do
   include MCPRequestHelpers
   include MCPSharedHelpers
 
+  include_examples 'BaseTool inheritance', CalendarColorMCP::CompleteAuthTool, {
+    auth_code: "test_code"
+  }
+
   describe 'complete_auth_tool execution' do
     context 'when auth code is valid (mocked)' do
       include_context 'authenticated user'
