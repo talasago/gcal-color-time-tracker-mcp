@@ -1,5 +1,6 @@
 require 'singleton'
 require 'logger'
+require 'fileutils'
 
 module CalendarColorMCP
   class LoggerManager
@@ -40,8 +41,13 @@ module CalendarColorMCP
     private
 
     def setup_logger
-      # stdoutベースのロガーを設定
-      @logger = Logger.new(STDOUT)
+      # logs/ディレクトリにログファイルを出力（MCPプロトコルとの競合回避）
+      log_dir = File.join(File.expand_path('../../..', __FILE__), 'logs')
+      FileUtils.mkdir_p(log_dir) unless Dir.exist?(log_dir)
+      
+      log_file = File.join(log_dir, 'calendar_color_mcp.log')
+      
+      @logger = Logger.new(log_file, 'daily', 10)
       @logger.level = determine_log_level
       @logger.formatter = proc do |severity, datetime, progname, msg|
         "[#{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
@@ -60,14 +66,8 @@ module CalendarColorMCP
     def log(level, message)
       return unless should_log?(level)
       
-      case level
-      when :error
-        # エラーはstderrに出力
-        STDERR.puts formatted_message(level, message)
-      else
-        # その他はstdoutに出力
-        @logger.send(level, message)
-      end
+      # logs/ディレクトリのファイルにログ出力
+      @logger.send(level, message)
     end
 
     def should_log?(level)
