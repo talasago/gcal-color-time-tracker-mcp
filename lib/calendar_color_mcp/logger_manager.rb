@@ -42,16 +42,29 @@ module CalendarColorMCP
 
     def setup_logger
       # logs/ディレクトリにログファイルを出力（MCPプロトコルとの競合回避）
-      log_dir = File.join(File.expand_path('../../..', __FILE__), 'logs')
-      FileUtils.mkdir_p(log_dir) unless Dir.exist?(log_dir)
+      log_dir = log_directory_path
+      
+      begin
+        FileUtils.mkdir_p(log_dir) unless Dir.exist?(log_dir)
+      rescue => e
+        raise e
+      end
       
       log_file = File.join(log_dir, 'calendar_color_mcp.log')
       
-      @logger = Logger.new(log_file, 'daily', 10)
-      @logger.level = determine_log_level
-      @logger.formatter = proc do |severity, datetime, progname, msg|
-        "[#{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
+      begin
+        @logger = Logger.new(log_file, 'daily', 10)
+        @logger.level = determine_log_level
+        @logger.formatter = proc do |severity, datetime, progname, msg|
+          "[#{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
+        end
+      rescue => e
+        raise e
       end
+    end
+    
+    def log_directory_path
+      File.join(File.expand_path('../../..', __FILE__), 'logs')
     end
 
     def determine_log_level
