@@ -1,7 +1,9 @@
 require_relative 'color_constants'
+require_relative 'loggable'
 
 module CalendarColorMCP
   class ColorFilterManager
+    include Loggable
 
     def initialize(include_colors: nil, exclude_colors: nil)
       @include_color_ids = normalize_colors(include_colors)
@@ -18,27 +20,14 @@ module CalendarColorMCP
         should_include_color?(color_id)
       end
 
-      if ENV['DEBUG']
-        STDERR.puts "\n=== 色フィルタリング結果 ==="
-        STDERR.puts "フィルタリング設定:"
-        STDERR.puts "  含める色: #{format_color_list(@include_color_ids)}" if @include_color_ids
-        STDERR.puts "  除外する色: #{format_color_list(@exclude_color_ids)}" if @exclude_color_ids
-        STDERR.puts "全イベント数: #{events.length}"
-        STDERR.puts "フィルタリング後: #{filtered_events.length}"
-        STDERR.puts "除外イベント数: #{events.length - filtered_events.length}"
-
-        # 除外されたイベントの詳細
-        excluded_events = events - filtered_events
-        if excluded_events.any?
-          STDERR.puts "\n除外されたイベント："
-          excluded_events.each do |event|
-            color_id = event.color_id&.to_i || ColorConstants.default_color_id
-            color_name = ColorConstants.color_name(color_id) || "不明"
-            STDERR.puts "  - #{event.summary} (色: #{color_name})"
-          end
-        end
-        STDERR.puts "=" * 30
-      end
+      logger.debug "=== Color Filtering Results ==="
+      logger.debug "Filtering settings:"
+      logger.debug "  Include colors: #{format_color_list(@include_color_ids)}" if @include_color_ids
+      logger.debug "  Exclude colors: #{format_color_list(@exclude_color_ids)}" if @exclude_color_ids
+      logger.debug "Total events: #{events.length}"
+      logger.debug "After filtering: #{filtered_events.length}"
+      logger.debug "Excluded events: #{events.length - filtered_events.length}"
+      logger.debug "=" * 30
 
       filtered_events
     end
@@ -62,9 +51,9 @@ module CalendarColorMCP
           color
         when String
           # カラー名からIDに変換
-          ColorConstants.name_to_id[color] || raise(ArgumentError, "無効なカラー名: '#{color}'")
+          ColorConstants.name_to_id[color] || raise(ArgumentError, "Invalid color name: '#{color}'")
         else
-          raise ArgumentError, "色は整数IDまたはカラー名文字列で指定してください: #{color}"
+          raise ArgumentError, "Color must be specified as integer ID or color name string: #{color}"
         end
       end.uniq
     end
@@ -74,7 +63,7 @@ module CalendarColorMCP
 
       invalid_ids = color_ids.reject { |id| ColorConstants.valid_color_id?(id) }
       if invalid_ids.any?
-        raise ArgumentError, "#{parameter_name}に無効な色ID: #{invalid_ids.join(', ')}。有効なIDは1-11です。"
+        raise ArgumentError, "Invalid color IDs in #{parameter_name}: #{invalid_ids.join(', ')}. Valid IDs are 1-11."
       end
     end
 

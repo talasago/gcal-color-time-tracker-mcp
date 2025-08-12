@@ -47,9 +47,13 @@ module CalendarColorMCP
 
     class << self
       def call(start_date:, end_date:, include_colors: nil, exclude_colors: nil, **context)
+        logger.info "Starting calendar analysis: #{start_date} to #{end_date}"
+        logger.debug "Parameters: include_colors=#{include_colors}, exclude_colors=#{exclude_colors}"
+        
         begin
           auth_manager = extract_auth_manager(context)
         rescue ArgumentError => e
+          logger.error "Failed to extract auth manager: #{e.message}"
           return error_response(e.message).build
         end
 
@@ -73,6 +77,8 @@ module CalendarColorMCP
           analyzer = TimeAnalyzer.new
           result = analyzer.analyze(events, start_date, end_date, color_filter: color_filter)
 
+          logger.info "Calendar analysis completed: events=#{events.length}, total_hours=#{result[:summary][:total_hours]}"
+          
           success_response({
             period: {
               start_date: start_date.to_s,
@@ -85,11 +91,15 @@ module CalendarColorMCP
             formatted_output: format_analysis_output(result, color_filter)
           })
         rescue AuthenticationError => e
+          logger.debug "Authentication error: #{e.message}"
           auth_url = auth_manager.get_auth_url
           return error_response(e.message).with(:auth_url, auth_url).build
         rescue CalendarApiError => e
+          logger.error "Calendar API error: #{e.message}"
           return error_response(e.message).build
         rescue => e
+          logger.error "Unexpected error occurred: #{e.message}"
+          logger.debug "Error details: #{e.backtrace&.first(5)&.join(', ')}"
           error_response("予期しないエラーが発生しました: #{e.message}").build
         end
       end

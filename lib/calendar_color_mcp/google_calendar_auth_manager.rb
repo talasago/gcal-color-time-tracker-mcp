@@ -5,10 +5,12 @@ require 'ostruct'
 require 'cgi'
 require 'singleton'
 require_relative 'token_manager'
+require_relative 'loggable'
 
 module CalendarColorMCP
   class GoogleCalendarAuthManager
     include Singleton
+    include Loggable
     SCOPE = Google::Apis::CalendarV3::AUTH_CALENDAR_READONLY
     REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'  # OOB flow for CLI
     AUTH_INSTRUCTIONS = [
@@ -29,11 +31,13 @@ module CalendarColorMCP
     def get_auth_url
       # 必要な環境変数のチェック
       if ENV['GOOGLE_CLIENT_ID'].nil? || ENV['GOOGLE_CLIENT_ID'].empty?
-        raise "GOOGLE_CLIENT_ID が設定されていません。.env ファイルを確認してください。"
+        logger.error "GOOGLE_CLIENT_ID not set. Check .env file."
+        raise "GOOGLE_CLIENT_ID not set. Check .env file."
       end
 
       if ENV['GOOGLE_CLIENT_SECRET'].nil? || ENV['GOOGLE_CLIENT_SECRET'].empty?
-        raise "GOOGLE_CLIENT_SECRET が設定されていません。.env ファイルを確認してください。"
+        logger.error "GOOGLE_CLIENT_SECRET not set. Check .env file."
+        raise "GOOGLE_CLIENT_SECRET not set. Check .env file."
       end
 
       # OAuth2の認証URLを直接構築
@@ -78,12 +82,13 @@ module CalendarColorMCP
 
       {
         success: true,
-        message: "認証が完了しました"
+        message: "Authentication completed"
       }
     rescue => e
+      logger.error "Authentication failed: #{e.message}"
       {
         success: false,
-        error: "認証に失敗しました: #{e.message}"
+        error: "Authentication failed: #{e.message}"
       }
     end
 

@@ -5,7 +5,11 @@ module MCPRequestHelpers
   def execute_mcp_requests(requests, timeout = 5, server_command = './bin/calendar-color-mcp')
     requests_json = requests.map(&:to_json).join("\n")
 
+    # テスト実行時はログを抑制する環境変数を設定
+    env = { 'RSPEC_RUNNING' => 'true' }
+    
     stdout, stderr, _status = Open3.capture3(
+      env,
       "echo '#{requests_json}' | timeout #{timeout} #{server_command}"
     )
 

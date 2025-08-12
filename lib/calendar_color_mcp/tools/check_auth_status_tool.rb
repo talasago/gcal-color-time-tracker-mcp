@@ -13,13 +13,17 @@ module CalendarColorMCP
 
     class << self
       def call(**context)
+        logger.info "Checking authentication status"
+        
         begin
           auth_manager = extract_auth_manager(context)
         rescue ArgumentError => e
+          logger.error "Failed to extract auth manager: #{e.message}"
           return error_response(e.message).build
         end
 
         authenticated = auth_manager.token_exist?
+        logger.debug "Authentication status: #{authenticated ? 'authenticated' : 'not authenticated'}"
 
         result = {
           authenticated: authenticated

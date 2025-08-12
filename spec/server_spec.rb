@@ -17,12 +17,6 @@ describe CalendarColorMCP::Server do
     # モック設定: 外部依存を分離
     allow(CalendarColorMCP::TokenManager).to receive(:instance).and_return(double('TokenManager'))
     allow(CalendarColorMCP::GoogleCalendarAuthManager).to receive(:instance).and_return(double('GoogleCalendarAuthManager'))
-
-    # ログ関連のメソッドをモック化（設計変更予定のため）
-    allow_any_instance_of(CalendarColorMCP::Server).to receive(:setup_logger)
-    allow_any_instance_of(CalendarColorMCP::Server).to receive(:log_info)
-    allow_any_instance_of(CalendarColorMCP::Server).to receive(:log_error)
-    allow_any_instance_of(CalendarColorMCP::Server).to receive(:log_debug)
   end
 
   describe '#initialize' do
