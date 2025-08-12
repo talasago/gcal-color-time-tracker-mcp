@@ -6,6 +6,7 @@ graph LR
     Main[calendar_color_mcp.rb] --> Server[server.rb]
     
     %% Server Dependencies
+    Server --> Loggable[loggable.rb]
     Server --> TokenManager[token_manager.rb]
     Server --> AuthManager[google_calendar_auth_manager.rb]
     Server --> AnalyzeTool[tools/analyze_calendar_tool.rb]
@@ -28,19 +29,27 @@ graph LR
     AnalyzeTool --> Errors[errors.rb]
     
     %% Google Calendar Client Dependencies
+    GoogleCalendarClient --> Loggable
     GoogleCalendarClient --> TokenManager
     GoogleCalendarClient --> Errors
     GoogleCalendarClient --> GoogleAPI[Google APIs]
     
     %% Time Analyzer Dependencies
+    TimeAnalyzer --> Loggable
     TimeAnalyzer --> ColorConstants
     
     %% Color Filter Manager Dependencies
+    ColorFilterManager --> Loggable
     ColorFilterManager --> ColorConstants
     
     %% Token Manager Dependencies
+    TokenManager --> Loggable
     TokenManager --> GoogleAuth[Google Auth]
     TokenManager --> FileSystem[File System]
+    
+    %% Logging System Dependencies
+    Loggable --> LoggerManager[logger_manager.rb]
+    LoggerManager --> Logger[Ruby Logger]
     
     %% Auth Manager Dependencies (inferred)
     AuthManager --> TokenManager
@@ -49,19 +58,22 @@ graph LR
     %% External Dependencies
     GoogleAPI --> HTTP[HTTP Requests]
     GoogleAuth --> OAuth[OAuth 2.0]
+    Logger --> STDOUT[Standard Output]
     
     %% Styling
     classDef entryPoint fill:#e1f5fe,color:#000
     classDef core fill:#f3e5f5,color:#000
     classDef tools fill:#e8f5e8,color:#000
     classDef managers fill:#fff3e0,color:#000
+    classDef logging fill:#f1f8e9,color:#000
     classDef external fill:#fce4ec,color:#000
     
     class Main entryPoint
     class Server,TimeAnalyzer,ColorFilterManager core
     class AnalyzeTool,StartAuthTool,CheckAuthTool,CompleteAuthTool,BaseTool tools
     class TokenManager,AuthManager,GoogleCalendarClient managers
-    class MCP,GoogleAPI,GoogleAuth,FileSystem,HTTP,OAuth external
+    class Loggable,LoggerManager logging
+    class MCP,GoogleAPI,GoogleAuth,FileSystem,HTTP,OAuth,Logger,STDOUT external
 ```
 
 ## アーキテクチャ概要
@@ -91,13 +103,18 @@ graph LR
    - `token_manager.rb` - 認証情報管理
    - `google_calendar_auth_manager.rb` - OAuth管理
 
-6. **共通モジュール**:
+6. **ログ層**:
+   - `loggable.rb` - ログ機能提供モジュール（mixin）
+   - `logger_manager.rb` - ログ管理クラス
+
+7. **共通モジュール**:
    - `color_constants.rb` - 色定義
    - `errors.rb` - エラークラス
 
 ### 主要な依存関係
 
 - **AnalyzeCalendarTool** が最も複雑で、多くのコンポーネントに依存
+- **Loggable** がmixinとして複数クラスにログ機能を提供
 - **ColorConstants** が共通の色定義として複数クラスから参照
 - **TokenManager** がシングルトンとして認証情報を一元管理
 - **BaseTool** が全てのツールクラスの基底クラスとして機能
