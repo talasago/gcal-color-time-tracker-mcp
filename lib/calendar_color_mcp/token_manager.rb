@@ -15,12 +15,12 @@ module CalendarColorMCP
       project_root = File.expand_path('../../..', __FILE__)
       @token_file_path = File.join(project_root, TOKEN_FILE)
 
-      logger.debug "TokenManager初期化"
-      logger.debug "  現在のディレクトリ: #{Dir.pwd}"
-      logger.debug "  プロジェクトルート: #{project_root}"
-      logger.debug "  トークンファイルパス: #{@token_file_path}"
-      logger.debug "  ディレクトリの書き込み権限: #{File.writable?(project_root)}"
-      logger.debug "  トークンファイル存在: #{File.exist?(@token_file_path)}"
+      logger.debug "TokenManager initialized"
+      logger.debug "  Current directory: #{Dir.pwd}"
+      logger.debug "  Project root: #{project_root}"
+      logger.debug "  Token file path: #{@token_file_path}"
+      logger.debug "  Directory writable: #{File.writable?(project_root)}"
+      logger.debug "  Token file exists: #{File.exist?(@token_file_path)}"
     end
 
     def token_exist?
@@ -37,24 +37,23 @@ module CalendarColorMCP
         saved_at: Time.now.to_i
       }
 
-      logger.debug "トークン保存を開始"
-      logger.debug "  現在のディレクトリ: #{Dir.pwd}"
-      logger.debug "  トークンファイルパス: #{@token_file_path}"
-      logger.debug "  ディレクトリの書き込み権限: #{File.writable?(File.dirname(@token_file_path))}"
+      logger.debug "Starting token save"
+      logger.debug "  Current directory: #{Dir.pwd}"
+      logger.debug "  Token file path: #{@token_file_path}"
+      logger.debug "  Directory writable: #{File.writable?(File.dirname(@token_file_path))}"
 
       File.write(@token_file_path, token_data.to_json)
-      logger.debug "トークンファイルを保存しました"
+      logger.debug "Token file saved successfully"
     rescue Errno::EACCES => e
-      error_msg = "トークンファイルの書き込み権限エラー: #{@token_file_path}\n" \
-                  "現在のディレクトリ: #{Dir.pwd}\n" \
-                  "エラー詳細: #{e.message}"
-      logger.debug error_msg
+      error_msg = "Token file write permission error: #{@token_file_path}\n" \
+                  "Current directory: #{Dir.pwd}\n" \
+                  "Error details: #{e.message}"
+      logger.error error_msg
       raise error_msg
     rescue => e
-      error_msg = "トークンファイルの保存エラー: #{e.message
-      }\n" \
-                  "ファイルパス: #{@token_file_path}"
-      logger.debug error_msg
+      error_msg = "Token file save error: #{e.message}\n" \
+                  "File path: #{@token_file_path}"
+      logger.error error_msg
       raise error_msg
     end
 
@@ -64,10 +63,10 @@ module CalendarColorMCP
       begin
         token_data = JSON.parse(File.read(@token_file_path))
       rescue JSON::ParserError => e
-        logger.debug "トークンファイルが破損しています: #{e.message}"
+        logger.debug "Token file corrupted: #{e.message}"
         return nil
       rescue Errno::EACCES, Errno::ENOENT => e
-        raise "トークンファイルへのアクセスに失敗しました: #{e.message}"
+        raise "Failed to access token file: #{e.message}"
       end
 
       credentials = Google::Auth::UserRefreshCredentials.new(
@@ -83,7 +82,7 @@ module CalendarColorMCP
 
       credentials
     rescue KeyError => e
-      logger.debug "トークンファイルに必要なキーがありません: #{e.message}"
+      logger.debug "Token file missing required keys: #{e.message}"
       nil
     end
 

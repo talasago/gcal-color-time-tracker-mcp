@@ -50,7 +50,7 @@ RSpec.describe 'CompleteAuthTool', type: :request do
 
         expect(content['success']).to be false
         # Expected error patterns for invalid auth code
-        expect(content['error']).to match(/認証.*失敗|invalid_grant|Malformed/)
+        expect(content['error']).to match(/Authentication.*failed|invalid_grant|Malformed/)
       end
     end
 

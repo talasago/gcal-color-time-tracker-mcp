@@ -107,7 +107,7 @@ describe CalendarColorMCP::TokenManager do
 
         it "should raise an error with descriptive message" do
           expect { token_manager.save_credentials(mock_credentials) }
-            .to raise_error(/トークンファイルの書き込み権限エラー/)
+            .to raise_error(/Token file write permission error/)
         end
       end
 
@@ -118,7 +118,7 @@ describe CalendarColorMCP::TokenManager do
 
         it "should raise an error with descriptive message" do
           expect { token_manager.save_credentials(mock_credentials) }
-            .to raise_error(/トークンファイルの保存エラー/)
+            .to raise_error(/Token file save error/)
         end
       end
     end
@@ -174,7 +174,7 @@ describe CalendarColorMCP::TokenManager do
         end
 
         it "should raise RuntimeError with descriptive message" do
-          expect { subject }.to raise_error(RuntimeError, /トークンファイルへのアクセスに失敗しました/)
+          expect { subject }.to raise_error(RuntimeError, /Failed to access token file/)
         end
       end
     end

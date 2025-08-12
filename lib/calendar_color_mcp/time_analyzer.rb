@@ -57,8 +57,8 @@ module CalendarColorMCP
     end
 
     def calculate_duration(event)
-      logger.debug "--- 時間計算デバッグ ---"
-      logger.debug "イベント: #{event.summary}"
+      logger.debug "--- Duration Calculation Debug ---"
+      logger.debug "Event: #{event.summary}"
       logger.debug "start.date_time: #{event.start.date_time.inspect}"
       logger.debug "start.date: #{event.start.date.inspect}"
       logger.debug "end.date_time: #{event.end.date_time.inspect}"
@@ -66,33 +66,33 @@ module CalendarColorMCP
 
       duration = if event.start.date_time && event.end.date_time
         # 通常のイベント（時刻指定）
-        logger.debug "判定: 時刻指定イベント"
+        logger.debug "Type: Timed event"
         duration_seconds = event.end.date_time - event.start.date_time
         # Rationalを秒数に変換（1日 = 86400秒）
         duration_seconds_float = duration_seconds * 86400
         calculated_duration = duration_seconds_float / 3600.0
         logger.debug "duration_seconds (Rational): #{duration_seconds}"
-        logger.debug "duration_seconds_float: #{duration_seconds_float}秒"
-        logger.debug "calculated_duration: #{calculated_duration}時間"
+        logger.debug "duration_seconds_float: #{duration_seconds_float} seconds"
+        logger.debug "calculated_duration: #{calculated_duration} hours"
         calculated_duration
       elsif event.start.date && event.end.date
         # 終日イベント
-        logger.debug "判定: 終日イベント"
+        logger.debug "Type: All-day event"
         start_date = Date.parse(event.start.date)
         end_date = Date.parse(event.end.date)
         calculated_duration = (end_date - start_date).to_i * 24.0
         logger.debug "start_date: #{start_date}"
         logger.debug "end_date: #{end_date}"
-        logger.debug "日数: #{(end_date - start_date).to_i}"
-        logger.debug "calculated_duration: #{calculated_duration}時間"
+        logger.debug "Days: #{(end_date - start_date).to_i}"
+        logger.debug "calculated_duration: #{calculated_duration} hours"
         calculated_duration
       else
         # その他（時間不明）
-        logger.debug "判定: 時間不明"
+        logger.debug "Type: Unknown time"
         0.0
       end
 
-      logger.debug "最終duration: #{duration}時間"
+      logger.debug "Final duration: #{duration} hours"
       logger.debug "---"
 
       duration
@@ -102,9 +102,9 @@ module CalendarColorMCP
       if event.start.date_time
         event.start.date_time.strftime('%Y-%m-%d %H:%M')
       elsif event.start.date
-        "#{event.start.date}（終日）"
+        "#{event.start.date} (All-day)"
       else
-        '時間不明'
+        'Unknown time'
       end
     end
 

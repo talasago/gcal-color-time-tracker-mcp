@@ -1,9 +1,17 @@
 require 'mcp'
+require_relative '../loggable'
+require_relative '../logger_manager'
 
 module CalendarColorMCP
   class BaseTool < MCP::Tool
+    include Loggable
+    
     class << self
       protected
+      
+      def logger
+        @logger ||= LoggerManager.instance
+      end
 
       def extract_auth_manager(context)
         server_context = context[:server_context]

@@ -36,22 +36,22 @@ module CalendarColorMCP
       # 参加したイベントのみをフィルタリング
       attended_events = filter_attended_events(all_events)
 
-      logger.debug "=== Google Calendar API レスポンス デバッグ ==="
-      logger.debug "認証ユーザー: #{@user_email}"
-      logger.debug "取得期間: #{start_date} 〜 #{end_date}"
-      logger.debug "全イベント数: #{all_events.length}"
-      logger.debug "参加イベント数: #{attended_events.length}"
-      logger.debug "除外イベント数: #{all_events.length - attended_events.length}"
+      logger.debug "=== Google Calendar API Response Debug ==="
+      logger.debug "Authenticated user: #{@user_email}"
+      logger.debug "Period: #{start_date} ~ #{end_date}"
+      logger.debug "Total events: #{all_events.length}"
+      logger.debug "Attended events: #{attended_events.length}"
+      logger.debug "Excluded events: #{all_events.length - attended_events.length}"
 
       attended_events.each_with_index do |event, index|
-        logger.debug "--- 参加イベント #{index + 1} ---"
-        logger.debug "タイトル: #{event.summary}"
+        logger.debug "--- Attended Event #{index + 1} ---"
+        logger.debug "Title: #{event.summary}"
         logger.debug "color_id: #{event.color_id.inspect}"
         logger.debug "start.date_time: #{event.start.date_time.inspect}"
         logger.debug "start.date: #{event.start.date.inspect}"
         logger.debug "end.date_time: #{event.end.date_time.inspect}"
         logger.debug "end.date: #{event.end.date.inspect}"
-        logger.debug "参加状況: #{get_attendance_status(event)}"
+        logger.debug "Attendance status: #{get_attendance_status(event)}"
       end
       logger.debug "=" * 50
 
@@ -86,7 +86,7 @@ module CalendarColorMCP
       calendar_info.id
     rescue => e
       # FIXME:例外を握りつぶしていいのか？
-      logger.debug "ユーザーメール取得エラー: #{e.message}"
+      logger.debug "User email retrieval error: #{e.message}"
       nil
     end
 
@@ -117,9 +117,9 @@ module CalendarColorMCP
 
     def get_attendance_status(event)
       if event.organizer&.self
-        "主催者"
+        "Organizer"
       elsif event.attendees.nil? || event.attendees.empty?
-        "プライベートイベント"
+        "Private event"
       else
         user_attendee = event.attendees.find { |attendee|
           attendee.email == @user_email || attendee.self
@@ -127,21 +127,21 @@ module CalendarColorMCP
 
         if user_attendee
           case user_attendee.response_status
-          when 'accepted' then '参加承認'
-          when 'declined' then '参加辞退'
-          when 'tentative' then '仮承認'
-          when 'needsAction' then '未応答'
-          else user_attendee.response_status || '不明'
+          when 'accepted' then 'Accepted'
+          when 'declined' then 'Declined'
+          when 'tentative' then 'Tentative'
+          when 'needsAction' then 'Needs action'
+          else user_attendee.response_status || 'Unknown'
           end
         else
-          "参加者リストなし"
+          "No attendee list"
         end
       end
     end
 
     def authorize_service
       credentials = @token_manager.load_credentials
-      raise AuthenticationError, "認証情報が見つかりません" unless credentials
+      raise AuthenticationError, "Authentication credentials not found" unless credentials
 
       @service.authorization = credentials
 
@@ -150,12 +150,12 @@ module CalendarColorMCP
         begin
           credentials.refresh!
         rescue Google::Apis::AuthorizationError => e
-          raise AuthenticationError, "トークンの更新に失敗しました: #{e.message}"
+          raise AuthenticationError, "Token refresh failed: #{e.message}"
         end
         @token_manager.save_credentials(credentials)
       end
     rescue Google::Apis::AuthorizationError => e
-      raise AuthenticationError, "認証エラー: #{e.message}"
+      raise AuthenticationError, "Authentication error: #{e.message}"
     end
   end
 end
