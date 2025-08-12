@@ -72,7 +72,7 @@ module CalendarColorMCP
           error_msg += "#{var}=your_#{var.downcase}\n"
         end
 
-        STDERR.puts error_msg
+        STDERR.puts error_msg if ENV['DEBUG'] == 'true'
         log_error error_msg
         raise error_msg
       end
