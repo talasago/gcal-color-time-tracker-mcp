@@ -1,7 +1,9 @@
 require_relative 'color_constants'
+require_relative 'loggable'
 
 module CalendarColorMCP
   class ColorFilterManager
+    include Loggable
 
     def initialize(include_colors: nil, exclude_colors: nil)
       @include_color_ids = normalize_colors(include_colors)
@@ -18,27 +20,26 @@ module CalendarColorMCP
         should_include_color?(color_id)
       end
 
-      if ENV['DEBUG'] == 'true'
-        STDERR.puts "\n=== 色フィルタリング結果 ==="
-        STDERR.puts "フィルタリング設定:"
-        STDERR.puts "  含める色: #{format_color_list(@include_color_ids)}" if @include_color_ids
-        STDERR.puts "  除外する色: #{format_color_list(@exclude_color_ids)}" if @exclude_color_ids
-        STDERR.puts "全イベント数: #{events.length}"
-        STDERR.puts "フィルタリング後: #{filtered_events.length}"
-        STDERR.puts "除外イベント数: #{events.length - filtered_events.length}"
+      logger.debug "=== 色フィルタリング結果 ==="
+      logger.debug "フィルタリング設定:"
+      logger.debug "  含める色: #{format_color_list(@include_color_ids)}" if @include_color_ids
+      logger.debug "  除外する色: #{format_color_list(@exclude_color_ids)}" if @exclude_color_ids
+      logger.debug "全イベント数: #{events.length}"
+      logger.debug "フィルタリング後: #{filtered_events.length}"
+      logger.debug "除外イベント数: #{events.length - filtered_events.length}"
 
-        # 除外されたイベントの詳細
-        excluded_events = events - filtered_events
-        if excluded_events.any?
-          STDERR.puts "\n除外されたイベント："
-          excluded_events.each do |event|
-            color_id = event.color_id&.to_i || ColorConstants.default_color_id
-            color_name = ColorConstants.color_name(color_id) || "不明"
-            STDERR.puts "  - #{event.summary} (色: #{color_name})"
-          end
+      # 除外されたイベントの詳細
+      # FIXME: これいらないかも
+      excluded_events = events - filtered_events
+      if excluded_events.any?
+        logger.debug "除外されたイベント："
+        excluded_events.each do |event|
+          color_id = event.color_id&.to_i || ColorConstants.default_color_id
+          color_name = ColorConstants.color_name(color_id) || "不明"
+          logger.debug "  - #{event.summary} (色: #{color_name})"
         end
-        STDERR.puts "=" * 30
       end
+      logger.debug "=" * 30
 
       filtered_events
     end

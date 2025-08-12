@@ -4,9 +4,12 @@ require 'date'
 require 'time'
 require_relative 'token_manager'
 require_relative 'errors'
+require_relative 'loggable'
 
 module CalendarColorMCP
   class GoogleCalendarClient
+    include Loggable
+
     SCOPE = Google::Apis::CalendarV3::AUTH_CALENDAR_READONLY
 
     def initialize
@@ -33,26 +36,24 @@ module CalendarColorMCP
       # 参加したイベントのみをフィルタリング
       attended_events = filter_attended_events(all_events)
 
-      if ENV['DEBUG'] == 'true'
-        STDERR.puts "\n=== Google Calendar API レスポンス デバッグ ==="
-        STDERR.puts "認証ユーザー: #{@user_email}"
-        STDERR.puts "取得期間: #{start_date} 〜 #{end_date}"
-        STDERR.puts "全イベント数: #{all_events.length}"
-        STDERR.puts "参加イベント数: #{attended_events.length}"
-        STDERR.puts "除外イベント数: #{all_events.length - attended_events.length}"
+      logger.debug "=== Google Calendar API レスポンス デバッグ ==="
+      logger.debug "認証ユーザー: #{@user_email}"
+      logger.debug "取得期間: #{start_date} 〜 #{end_date}"
+      logger.debug "全イベント数: #{all_events.length}"
+      logger.debug "参加イベント数: #{attended_events.length}"
+      logger.debug "除外イベント数: #{all_events.length - attended_events.length}"
 
-        attended_events.each_with_index do |event, index|
-          STDERR.puts "\n--- 参加イベント #{index + 1} ---"
-          STDERR.puts "タイトル: #{event.summary}"
-          STDERR.puts "color_id: #{event.color_id.inspect}"
-          STDERR.puts "start.date_time: #{event.start.date_time.inspect}"
-          STDERR.puts "start.date: #{event.start.date.inspect}"
-          STDERR.puts "end.date_time: #{event.end.date_time.inspect}"
-          STDERR.puts "end.date: #{event.end.date.inspect}"
-          STDERR.puts "参加状況: #{get_attendance_status(event)}"
-        end
-        STDERR.puts "=" * 50
+      attended_events.each_with_index do |event, index|
+        logger.debug "--- 参加イベント #{index + 1} ---"
+        logger.debug "タイトル: #{event.summary}"
+        logger.debug "color_id: #{event.color_id.inspect}"
+        logger.debug "start.date_time: #{event.start.date_time.inspect}"
+        logger.debug "start.date: #{event.start.date.inspect}"
+        logger.debug "end.date_time: #{event.end.date_time.inspect}"
+        logger.debug "end.date: #{event.end.date.inspect}"
+        logger.debug "参加状況: #{get_attendance_status(event)}"
       end
+      logger.debug "=" * 50
 
       attended_events
     rescue Google::Apis::AuthorizationError => e
@@ -84,7 +85,8 @@ module CalendarColorMCP
       calendar_info = @service.get_calendar('primary')
       calendar_info.id
     rescue => e
-      STDERR.puts "ユーザーメール取得エラー: #{e.message}" if ENV['DEBUG'] == 'true'
+      # FIXME:例外を握りつぶしていいのか？
+      logger.debug "ユーザーメール取得エラー: #{e.message}"
       nil
     end
 
