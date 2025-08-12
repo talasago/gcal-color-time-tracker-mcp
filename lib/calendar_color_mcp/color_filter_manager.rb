@@ -18,7 +18,7 @@ module CalendarColorMCP
         should_include_color?(color_id)
       end
 
-      if ENV['DEBUG']
+      if ENV['DEBUG'] == 'true'
         STDERR.puts "\n=== 色フィルタリング結果 ==="
         STDERR.puts "フィルタリング設定:"
         STDERR.puts "  含める色: #{format_color_list(@include_color_ids)}" if @include_color_ids

@@ -33,7 +33,7 @@ module CalendarColorMCP
       # 参加したイベントのみをフィルタリング
       attended_events = filter_attended_events(all_events)
 
-      if ENV['DEBUG']
+      if ENV['DEBUG'] == 'true'
         STDERR.puts "\n=== Google Calendar API レスポンス デバッグ ==="
         STDERR.puts "認証ユーザー: #{@user_email}"
         STDERR.puts "取得期間: #{start_date} 〜 #{end_date}"
@@ -84,7 +84,7 @@ module CalendarColorMCP
       calendar_info = @service.get_calendar('primary')
       calendar_info.id
     rescue => e
-      STDERR.puts "ユーザーメール取得エラー: #{e.message}" if ENV['DEBUG']
+      STDERR.puts "ユーザーメール取得エラー: #{e.message}" if ENV['DEBUG'] == 'true'
       nil
     end
 

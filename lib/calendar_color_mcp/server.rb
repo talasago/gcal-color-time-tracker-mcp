@@ -88,19 +88,19 @@ module CalendarColorMCP
       log_file = File.join(log_dir, 'mcp-server-calendar-color-mcp.log')
 
       @logger = Logger.new(log_file, 'monthly')
-      @logger.level = ENV['DEBUG'] ? Logger::DEBUG : Logger::INFO
+      @logger.level = ENV['DEBUG'] == 'true' ? Logger::DEBUG : Logger::INFO
       @logger.formatter = proc do |severity, datetime, progname, msg|
         "[#{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
       end
 
-      STDERR.puts "ログファイル初期化完了: #{log_file}" if ENV['DEBUG']
+      STDERR.puts "ログファイル初期化完了: #{log_file}" if ENV['DEBUG'] == 'true'
     rescue => e
       STDERR.puts "ログファイル初期化エラー: #{e.message}"
     end
 
     def log_info(message)
       @logger&.info(message)
-      STDERR.puts message if ENV['DEBUG']
+      STDERR.puts message if ENV['DEBUG'] == 'true'
     end
 
     def log_error(message)
@@ -110,7 +110,7 @@ module CalendarColorMCP
 
     def log_debug(message)
       @logger&.debug(message)
-      STDERR.puts message if ENV['DEBUG']
+      STDERR.puts message if ENV['DEBUG'] == 'true'
     end
   end
 end
