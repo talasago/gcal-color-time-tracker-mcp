@@ -266,44 +266,60 @@ end
 
 ## 3. クリーンアーキテクチャ適用指針
 
-### 3.1 MCPサーバー向け4層レイヤー設計
+### 3.1 MCPサーバー向け明示的レイヤー設計
 
 ```
-📁 Entities (Domain)              # 最内層
-├── CalendarEvent                 # ドメインエンティティ
-├── TimeSpan                      # 値オブジェクト  
-├── AuthToken                     # 認証情報
-└── EventFilter                   # フィルタ条件
+lib/calendar_color_mcp/
+├── domain/                          # Domain層（最内層）
+│   ├── entities/
+│   │   ├── calendar_event.rb       # カレンダーイベントエンティティ
+│   │   ├── time_span.rb            # 時間範囲値オブジェクト
+│   │   ├── auth_token.rb           # 認証トークンエンティティ
+│   │   └── event_filter.rb         # イベントフィルタ値オブジェクト
+│   └── services/
+│       └── event_duration_calculation_service.rb # イベント期間計算
+├── application/                     # Application層
+│   ├── use_cases/
+│   │   ├── analyze_calendar_use_case.rb  # カレンダー分析UseCase
+│   │   ├── authenticate_user_use_case.rb # 認証UseCase
+│   │   └── filter_events_by_color_use_case.rb # 色別フィルタリングUseCase
+│   └── services/
+│       └── calendar_orchestration_service.rb # 複数UseCase調整
+├── interface_adapters/              # Interface Adapters層
+│   └── tools/
+│       ├── analyze_calendar_tool.rb # MCPツール（Controller的役割）
+│       ├── start_auth_tool.rb       # 認証開始ツール
+│       ├── check_auth_status_tool.rb # 認証状態確認ツール
+│       ├── complete_auth_tool.rb    # 認証完了ツール
+│       └── base_tool.rb             # ベースツール
+└── infrastructure/                  # Infrastructure層（最外層）
+    ├── repositories/
+    │   ├── google_calendar_repository.rb   # Google Calendar API実装
+    │   └── token_file_repository.rb        # トークンファイル管理
+    ├── services/
+    │   ├── configuration_service.rb        # 設定管理サービス
+    │   └── event_filter_service.rb         # イベントフィルタリング
+    └── decorators/
+        └── debug_logger_decorator.rb       # デバッグログ装飾
 
-📁 Use Cases (Application)        # アプリケーションサービス層
-├── AnalyzeCalendarUseCase        # カレンダー分析
-├── AuthenticateUserUseCase       # 認証フロー
-└── FilterEventsByColorUseCase    # 色別フィルタリング
-
-📁 Interface Adapters            # インターフェース層
-├── Controllers/                 
-│   └── MCPToolsController       # MCPツール（Presenter）
-├── Repositories/
-│   ├── GoogleCalendarRepository # API Gateway
-│   └── TokenFileRepository      # ファイルストレージ
-└── Services/
-    └── ConfigurationService     # 設定管理
-
-📁 Frameworks & Drivers          # 最外層
-├── MCP::Server                  # MCPフレームワーク
-├── Google Calendar API          # 外部API
-└── File System                  # ストレージ
+# モジュール名前空間設計（簡潔化）
+# Domain::CalendarEvent (CalendarColorMCPプレフィックスなし)
+# Application::AnalyzeCalendarUseCase
+# Infrastructure::GoogleCalendarRepository
 ```
 
-### 3.2 依存性管理方針
+### 3.2 明示的レイヤー依存関係ルール
 
-#### Singletonと依存性注入の共存
+#### レイヤー間依存方向（内向き依存）
 
 ```ruby
-# 推奨パターン
-class AnalyzeCalendarUseCase
+# ✅ 正しい依存方向
+Domain層 ← Application層 ← Interface Adapters層 ← Infrastructure層
+
+# 具体例
+class AnalyzeCalendarUseCase  # Application層
   def initialize(
-    calendar_repository: GoogleCalendarRepository.new,
+    calendar_repository: nil,     # Infrastructure層への依存注入
     token_repository: TokenManager.instance,      # Singleton継続
     auth_service: GoogleCalendarAuthManager.instance  # Singleton継続
   )
@@ -312,93 +328,169 @@ class AnalyzeCalendarUseCase
     @auth_service = auth_service
   end
 end
+
+# ❌ 禁止される依存方向
+# Domain層 → Application層  # 禁止
+# Application層 → Interface Adapters層  # 禁止
 ```
 
-**設計原則**:
-- **ドメインに適切なものはSingletonを維持**
-- **テストが必要なものは注入可能にする**
-- **インターフェースを明示的に定義**
+**明示的レイヤー設計原則**:
+- **各レイヤーの責任を明確に分離**
+- **依存関係逆転原則を厳格に適用**
+- **ドメインに適切なものはSingleton維持**
+- **テスト容易性のための注入可能設計**
 
-### 3.3 レイヤー間通信ルール
+### 3.3 明示的レイヤー間通信ルール
 
-#### 1. 依存関係ルール
+#### 1. 厳格な依存関係制約
 ```ruby
 # ✅ 正しい依存方向（内向き）
-UseCase → Repository Interface
-Repository Implementation → UseCase Interface
+# Infrastructure層 → Interface Adapters層 → Application層 → Domain層
 
-# ❌ 間違った依存方向（外向き）
-Entity → UseCase  # 禁止
-UseCase → Controller  # 禁止
+# 具体的な実装例（簡潔なモジュール名前空間）
+module Infrastructure
+  class GoogleCalendarRepository  # Infrastructure層
+    # Application層のインターフェースを実装
+    def fetch_events(start_date, end_date)
+      # Google Calendar API呼び出し
+    end
+  end
+end
+
+module Application
+  class AnalyzeCalendarUseCase  # Application層
+    def initialize(calendar_repository:)  # Infrastructure層を注入
+      @calendar_repository = calendar_repository
+    end
+    
+    def execute(start_date:, end_date:, color_filters: nil, user_email:)
+      # Domain層のエンティティを使用
+      events = @calendar_repository.fetch_events(start_date, end_date)
+      # ビジネスロジック実行
+    end
+  end
+end
+
+module InterfaceAdapters
+  class AnalyzeCalendarTool  # Interface Adapters層
+    def call(start_date:, end_date:, **context)
+      # Application層のUseCaseを呼び出し
+      use_case = Application::AnalyzeCalendarUseCase.new(
+        calendar_repository: Infrastructure::GoogleCalendarRepository.new
+      )
+      use_case.execute(start_date: start_date, end_date: end_date)
+    end
+  end
+end
+
+# ❌ 禁止される依存方向
+# Domain層 → Application層  # 絶対禁止
+# Application層 → Interface Adapters層  # 絶対禁止
 ```
 
-#### 2. データ転送オブジェクト（DTO）
+#### 2. レイヤー境界での型安全なデータ受け渡し
 ```ruby
-# レイヤー間でのデータ受け渡し
-class AnalysisRequestDto
-  attr_reader :start_date, :end_date, :color_filters
-  
-  def initialize(start_date:, end_date:, color_filters: nil)
-    @start_date = start_date
-    @end_date = end_date  
-    @color_filters = color_filters
+# Domain層エンティティを活用したレイヤー間通信（簡潔なモジュール名前空間）
+module Domain
+  class CalendarEvent  # Domain層エンティティ
+    def initialize(summary:, start_time:, end_time:, color_id:)
+      # ドメインルールとバリデーション
+    end
+  end
+end
+
+module Application
+  class AnalyzeCalendarUseCase
+    def execute(start_date:, end_date:, color_filters: nil, user_email:)
+      # Domain層の値オブジェクトでバリデーション
+      time_span = Domain::TimeSpan.new(start_date, end_date)
+      
+      # Infrastructure層からドメインエンティティを取得
+      events = @calendar_repository.fetch_events(time_span.start_date, time_span.end_date)
+      
+      # Domain層サービスでビジネスロジック実行
+      @analyzer_service.analyze(events)
+    end
   end
 end
 ```
 
 ---
 
-## 4. 改善ロードマップ
+## 4. 明示的レイヤー実装ロードマップ
 
 ### Phase 1: Domain層の確立（2-3日）
 
-#### 1.1 エンティティ・値オブジェクト作成
+#### 1.1 ドメインエンティティ・値オブジェクト作成
 ```ruby
-# lib/calendar_color_mcp/entities/calendar_event.rb
-class CalendarEvent
-  def initialize(summary:, start_time:, end_time:, color_id:, attendees:)
-    # バリデーションとビジネスルール
-  end
-  
-  def duration_hours
-    # ビジネスロジック
-  end
-  
-  def attended_by?(user_email)
-    # 参加判定ロジック
+# lib/calendar_color_mcp/domain/entities/calendar_event.rb
+module Domain
+  class CalendarEvent
+    def initialize(summary:, start_time:, end_time:, color_id:, attendees:)
+      # バリデーションとビジネスルール
+    end
+    
+    def duration_hours
+      # ドメインロジック
+    end
+    
+    def attended_by?(user_email)
+      # 参加判定ドメインルール
+    end
   end
 end
 ```
 
-#### 1.2 Repository Interface定義
+#### 1.2 ドメインサービス作成
 ```ruby
-# lib/calendar_color_mcp/repositories/calendar_repository_interface.rb
-module CalendarRepositoryInterface
-  def fetch_events(start_date, end_date)
-    raise NotImplementedError
+# lib/calendar_color_mcp/domain/services/event_duration_calculation_service.rb
+module Domain
+  class EventDurationCalculationService
+    def calculate_total_duration(events)
+      # 複雑なドメインロジック
+    end
   end
 end
 ```
 
-### Phase 2: Use Cases層の実装（3-4日）
+### Phase 2: Application層の実装（3-4日）
 
-#### 2.1 責任の明確な分離
+#### 2.1 明示的UseCaseクラス作成
 ```ruby
-# Before: 60行の巨大メソッド
+# Before: Infrastructure層に混在
 def get_events(start_date, end_date)
   # 認証・取得・フィルタ・ログが混在
 end
 
-# After: 責任分離
-class AnalyzeCalendarUseCase
-  def execute(request_dto)
-    events = @calendar_repository.fetch_events(
-      request_dto.start_date, 
-      request_dto.end_date
+# After: Application層での責任分離
+# lib/calendar_color_mcp/application/use_cases/analyze_calendar_use_case.rb
+module Application
+  class AnalyzeCalendarUseCase
+    def initialize(
+      calendar_repository:,  # Infrastructure層への依存注入
+      event_filter_service:, # Infrastructure層サービス
+      token_manager: TokenManager.instance,
+      auth_manager: GoogleCalendarAuthManager.instance
     )
+      @calendar_repository = calendar_repository
+      @event_filter_service = event_filter_service
+      @token_manager = token_manager
+      @auth_manager = auth_manager
+    end
     
-    filtered_events = @filter_service.apply_filters(events, request_dto.filters)
-    @analyzer_service.analyze(filtered_events)
+    def execute(start_date:, end_date:, color_filters: nil, user_email:)
+      # 1. ドメイン値オブジェクトでバリデーション
+      time_span = Domain::TimeSpan.new(start_date, end_date)
+      
+      # 2. Infrastructure層を通じてデータ取得
+      events = @calendar_repository.fetch_events(time_span.start_date, time_span.end_date)
+      
+      # 3. Infrastructure層サービスでフィルタリング
+      filtered_events = @event_filter_service.apply_filters(events, color_filters, user_email)
+      
+      # 4. Domain層サービスで分析
+      Domain::EventDurationCalculationService.new.calculate_total_duration(filtered_events)
+    end
   end
 end
 ```
@@ -414,7 +506,7 @@ end
 
 ### Phase 3: Infrastructure層の再構築（2-3日）
 
-#### 3.1 Repository実装の簡素化
+#### 3.1 明示的Repository実装
 ```ruby  
 # Before: 複数責任が混在
 class GoogleCalendarClient
@@ -426,16 +518,43 @@ class GoogleCalendarClient
   end
 end
 
-# After: 責任の明確化
-class GoogleCalendarRepository
-  def fetch_events(start_date, end_date)
-    @service.list_events(
-      'primary',
-      time_min: start_date.iso8601,
-      time_max: end_date.iso8601,
-      single_events: true,
-      order_by: 'startTime'
-    ).items
+# After: Infrastructure層での責任明確化
+# lib/calendar_color_mcp/infrastructure/repositories/google_calendar_repository.rb
+module Infrastructure
+  class GoogleCalendarRepository
+    def fetch_events(start_date, end_date)
+      @service.list_events(
+        'primary',
+        time_min: start_date.iso8601,
+        time_max: end_date.iso8601,
+        single_events: true,
+        order_by: 'startTime'
+      ).items
+    end
+  end
+end
+
+# lib/calendar_color_mcp/infrastructure/services/event_filter_service.rb
+module Infrastructure
+  class EventFilterService
+    def apply_filters(events, color_filters, user_email)
+      # フィルタリングロジック（Infrastructure層の責任）
+    end
+  end
+end
+
+# lib/calendar_color_mcp/infrastructure/decorators/debug_logger_decorator.rb
+module Infrastructure
+  class DebugLoggerDecorator
+    def initialize(repository)
+      @repository = repository
+    end
+    
+    def fetch_events(start_date, end_date)
+      events = @repository.fetch_events(start_date, end_date)
+      log_debug_info(events)
+      events
+    end
   end
 end
 ```
@@ -463,7 +582,7 @@ end
 
 ### Phase 4: Interface Adapters層（1-2日）
 
-#### 4.1 MCPツールの薄層化
+#### 4.1 明示的Controller層としてのMCPツール
 ```ruby
 # Before: ビジネスロジックが含まれる
 class AnalyzeCalendarTool < BaseTool
@@ -472,26 +591,46 @@ class AnalyzeCalendarTool < BaseTool
   end
 end
 
-# After: 薄い層（Controller的役割）
-class AnalyzeCalendarTool < BaseTool  
-  def call(start_date:, end_date:, include_colors: nil, exclude_colors: nil, **context)
-    request = AnalysisRequestDto.new(
-      start_date: Date.parse(start_date),
-      end_date: Date.parse(end_date),
-      color_filters: build_color_filters(include_colors, exclude_colors)
-    )
+# After: Interface Adapters層でのController的役割（簡潔なモジュール名前空間）
+# lib/calendar_color_mcp/interface_adapters/tools/analyze_calendar_tool.rb
+module InterfaceAdapters
+  class AnalyzeCalendarTool < BaseTool  
+    def call(start_date:, end_date:, include_colors: nil, exclude_colors: nil, **context)
+      # 1. リクエストパラメータの変換（Interface Adapters層の責任）
+      parsed_start_date = Date.parse(start_date)
+      parsed_end_date = Date.parse(end_date)
+      color_filters = build_color_filters(include_colors, exclude_colors)
+      user_email = extract_user_email(context)
+      
+      # 2. Application層UseCaseの組み立て
+      use_case = Application::AnalyzeCalendarUseCase.new(
+        calendar_repository: Infrastructure::GoogleCalendarRepository.new,
+        event_filter_service: Infrastructure::EventFilterService.new,
+        token_manager: extract_token_manager(context),
+        auth_manager: extract_auth_manager(context)
+      )
+      
+      # 3. UseCaseの実行
+      result = use_case.execute(
+        start_date: parsed_start_date,
+        end_date: parsed_end_date,
+        color_filters: color_filters,
+        user_email: user_email
+      )
+      
+      # 4. レスポンスの変換（Interface Adapters層の責任）
+      success_response(format_response(result))
+    rescue Application::AuthenticationRequiredError => e
+      handle_authentication_error(e)
+    rescue Application::InvalidParameterError => e
+      handle_parameter_error(e)
+    end
     
-    use_case = AnalyzeCalendarUseCase.new(
-      calendar_repository: GoogleCalendarRepository.new,
-      token_manager: extract_token_manager(context),
-      auth_manager: extract_auth_manager(context)
-    )
+    private
     
-    result = use_case.execute(request)
-    success_response(result.to_hash)
-  rescue AuthenticationRequiredError => e
-    auth_url = extract_auth_manager(context).get_auth_url
-    error_response(e.message).with(auth_url: auth_url).build
+    def format_response(result)
+      # Interface Adapters層でのレスポンス変換
+    end
   end
 end
 ```
@@ -517,61 +656,74 @@ describe AnalyzeCalendarUseCase do
       .to receive(:fetch_events)
       .and_return([mock_event])
       
-    result = use_case.execute(request_dto)
+    result = use_case.execute(
+      start_date: Date.parse('2024-01-01'),
+      end_date: Date.parse('2024-01-31'),
+      user_email: 'test@example.com'
+    )
     
     expect(result).to be_success
   end
 end
 ```
 
-#### 5.2 既存FIXMEの解決
-- ✅ Server運用時エラーハンドリング → Use Case層で統一処理
-- ✅ GoogleCalendarClientビジネスロジック混在 → Repository+UseCase分離  
-- ✅ BaseToolビルダーパターン → 標準エラーレスポンス採用
+#### 5.2 明示的レイヤー構造での技術債務解決
+- ✅ Server運用時エラーハンドリング → Application層でのエラーハンドリング統一
+- ✅ GoogleCalendarClientビジネスロジック混在 → Infrastructure層Repository + Application層UseCase完全分離  
+- ✅ BaseToolビルダーパターン → Interface Adapters層での標準レスポンス変換パターン採用
+- ✅ レイヤー間依存関係 → 依存関係逆転原則の厳格適用
 
-### 🎯 実装優先順位と期待効果
+### 🎯 明示的レイヤー実装の優先順位と期待効果
 
 #### 高優先度（即座に効果）
-1. **GoogleCalendarClientの分離**（Phase 3）
-   - 60行メソッドの解決
+1. **Infrastructure層の完全分離**（Phase 3）
+   - 60行メソッドの責任分離
+   - Repository・Service・Decoratorの明確化
    - テストの簡素化
    
-2. **エラーハンドリング統一**（Phase 2）
-   - 例外握りつぶし問題の解決
-   - 統一的なエラーレスポンス
+2. **Application層エラーハンドリング統一**（Phase 2）
+   - UseCase単位での統一例外処理
+   - レイヤー境界での適切なエラー変換
 
 #### 中優先度（中長期的効果）  
-3. **Use Cases層の確立**（Phase 2）
-   - ビジネスロジックの明確化
-   - 新機能追加の容易化
+3. **Application層UseCase確立**（Phase 2）
+   - ビジネスロジックのApplication層集約
+   - 複数Infrastructure層サービスの調整
+   - 新機能追加時の影響局所化
 
-4. **設定管理統一**（Phase 3）
-   - 重複コード削減
-   - 保守性向上
+4. **Interface Adapters層Controller化**（Phase 4）
+   - MCPツールの薄層化
+   - リクエスト/レスポンス変換の統一
+   - プロトコル変更への対応力向上
 
 #### 低優先度（将来への投資）
 5. **Domain層の確立**（Phase 1）
-   - 長期的な拡張性
-   - ドメインロジックの保護
+   - ドメインエンティティでのビジネスルール保護
+   - 値オブジェクトによる型安全性
+   - 長期的なドメインモデル進化基盤
 
 ---
 
 ## まとめ
 
-### ✅ Singleton継続の妥当性
-- **TokenManager**: ファイル競合回避、リソース保護のため適切
-- **AuthManager**: 認証状態統一、設定一元管理のため適切
-- テスト上の制約は、ドメインの整合性に比べて優先度が低い
+### ✅ 明示的レイヤー構造でのSingleton妥当性
+- **TokenManager**: Infrastructure層での適切なSingleton（ファイル競合回避、リソース保護）
+- **AuthManager**: Infrastructure層での適切なSingleton（認証状態統一、設定一元管理）
+- **ConfigurationService**: Infrastructure層での新規Singleton（環境変数管理一元化）
+- テスト上の制約よりもドメインの整合性とレイヤー責任を優先
 
-### 🎯 クリーンアーキテクチャ適用効果
-1. **責任の明確化**: 各レイヤーの役割が明確になる
-2. **テスタビリティ向上**: Use Case単位でのテストが容易
-3. **拡張性確保**: 新機能追加時の影響範囲を局所化
-4. **保守性向上**: 技術債務（FIXME）の根本的解決
+### 🎯 明示的レイヤー構造の適用効果
+1. **責任の明確化**: 各レイヤーディレクトリで物理的に責任分離
+2. **依存関係の可視化**: レイヤー間の依存方向が明確
+3. **テスタビリティ向上**: レイヤー単位での独立テストが容易
+4. **拡張性確保**: 新機能追加時の配置先とレイヤー間インターフェースが明確
+5. **保守性向上**: 技術債務（FIXME）の根本的解決とレイヤー責任の明確化
+6. **新規開発者の理解促進**: ディレクトリ構造でアーキテクチャが自明
 
-### 🚀 段階的移行アプローチ  
-- **Phase 3 Infrastructure層から開始**: 即座に効果が見える
-- **Singleton設計は維持**: ドメインに適したパターンを尊重
-- **依存性注入併用**: テスト容易性とドメイン整合性の両立
+### 🚀 明示的レイヤー移行アプローチ  
+- **Phase 3 Infrastructure層から開始**: 物理的なディレクトリ分離で即座に効果
+- **Singleton設計は適切なレイヤーで維持**: Infrastructure層での適切なパターン継続
+- **レイヤー間依存性注入**: 依存関係逆転原則の厳格適用
+- **段階的モジュール名前空間**: 各Phaseでレイヤー名前空間を段階的に導入
 
-このアプローチにより、**現在のコードベースの利点を活かしつつ**、**クリーンアーキテクチャの恩恵を段階的に享受**できます。
+この明示的レイヤー構造アプローチにより、**現在のコードベースの利点を活かしつつ**、**クリーンアーキテクチャの恩恵を物理的なディレクトリ構造で明確化し、段階的に享受**できます。各レイヤーの責任が明確になり、新規開発者でもアーキテクチャを直感的に理解できる構造を実現します。

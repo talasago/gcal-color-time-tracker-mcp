@@ -29,11 +29,11 @@ Phase 3 (高優先度) → Phase 2 (中優先度) → Phase 4 (中優先度) →
 
 | Phase | 内容 | 期間 | 優先度 | 期待効果 |
 |-------|-----|------|--------|----------|
-| **Phase 3** | Infrastructure層再構築 | 1-2日 | 🔴 高 | 即座に効果（60行メソッド解決） |
-| **Phase 2** | Use Cases層実装 | 2-3日 | 🟡 中 | 中長期効果（ビジネスロジック明確化） |
-| **Phase 4** | Interface Adapters層 | 1日 | 🟡 中 | MCPツール薄層化 |
-| **Phase 1** | Domain層確立 | 1-2日 | 🟢 低 | 将来への投資（拡張性確保） |
-| **Phase 5** | 統合とテスト改善 | 1-2日 | ⚪ 統合 | 全体統合と品質保証 |
+| **Phase 3** | Infrastructure層ディレクトリ分離 | 1-2日 | 🔴 高 | 即座に効果（60行メソッド解決、物理的責任分離） |
+| **Phase 2** | Application層ディレクトリ作成 | 2-3日 | 🟡 中 | 中長期効果（UseCase集約、ビジネスロジック明確化） |
+| **Phase 4** | Interface Adapters層ディレクトリ作成 | 1日 | 🟡 中 | Controller層明確化、MCPツール薄層化 |
+| **Phase 1** | Domain層ディレクトリ作成 | 1-2日 | 🟢 低 | 将来への投資（ドメインモデル拡張性確保） |
+| **Phase 5** | レイヤー間統合とテスト改善 | 1-2日 | ⚪ 統合 | 全レイヤー統合と品質保証 |
 
 ---
 
@@ -66,51 +66,142 @@ end
 
 **1. GoogleCalendarRepository（純粋なAPI層）**
 ```ruby
-# lib/calendar_color_mcp/repositories/google_calendar_repository.rb
-class GoogleCalendarRepository
-  def fetch_events(start_date, end_date)
-    @service.list_events(
-      'primary',
-      time_min: start_date.iso8601,
-      time_max: end_date.iso8601,
-      single_events: true,
-      order_by: 'startTime'
-    ).items
+# lib/calendar_color_mcp/infrastructure/repositories/google_calendar_repository.rb
+module Infrastructure
+  class GoogleCalendarRepository
+    def fetch_events(start_date, end_date)
+      @service.list_events(
+        'primary',
+        time_min: start_date.iso8601,
+        time_max: end_date.iso8601,
+        single_events: true,
+        order_by: 'startTime'
+      ).items
+    end
   end
 end
 ```
 
 **2. EventFilterService（フィルタリング責任）**
 ```ruby
-# lib/calendar_color_mcp/services/event_filter_service.rb  
-class EventFilterService
-  def filter_attended_events(events, user_email)
-    events.select { |event| attended_event?(event, user_email) }
-  end
-  
-  private
-  
-  def attended_event?(event, user_email)
-    # 既存のフィルタリングロジックを移動
+# lib/calendar_color_mcp/infrastructure/services/event_filter_service.rb  
+module Infrastructure
+  class EventFilterService
+    def filter_attended_events(events, user_email)
+      events.select { |event| attended_event?(event, user_email) }
+    end
+    
+    private
+    
+    def attended_event?(event, user_email)
+      # 既存のフィルタリングロジックを移動
+    end
   end
 end
 ```
 
 **3. DebugLoggerDecorator（ログ責任分離）**
 ```ruby
-# lib/calendar_color_mcp/services/debug_logger_decorator.rb
-class DebugLoggerDecorator
-  def initialize(repository)
-    @repository = repository
-  end
-  
-  def fetch_events(start_date, end_date)
-    events = @repository.fetch_events(start_date, end_date)
-    log_debug_info(events, start_date, end_date)
-    events
+# lib/calendar_color_mcp/infrastructure/decorators/debug_logger_decorator.rb
+module Infrastructure
+  class DebugLoggerDecorator
+    def initialize(repository)
+      @repository = repository
+    end
+    
+    def fetch_events(start_date, end_date)
+      events = @repository.fetch_events(start_date, end_date)
+      log_debug_info(events, start_date, end_date)
+      events
+    end
   end
 end
 ```
+
+### 3.3 ErrorResponseBuilderの簡素化
+
+#### 📋 現在の問題
+```ruby
+# lib/calendar_color_mcp/tools/base_tool.rb:44-70 (設計決定書で確認済み)
+class ErrorResponseBuilder
+  def initialize(message)
+    @data = { success: false, error: message }
+  end
+  
+  def with(key, value = nil, **data)
+    # 複雑なビルダーパターン実装
+    if value.nil?
+      @data.merge!(data)
+    else
+      @data[key] = value
+    end
+    self
+  end
+  
+  def build
+    @data
+  end
+end
+```
+
+**問題点**:
+- シンプルなエラーレスポンスに対する過度な抽象化
+- ビルダーパターンの実装が複雑で、使用箇所も限定的
+- メンテナンスコストが機能の価値を上回る
+
+#### ✅ 解決策: 標準エラーレスポンス採用
+
+**1. シンプルなエラーレスポンス形式の統一**
+```ruby
+# lib/calendar_color_mcp/tools/base_tool.rb (リファクタ後)
+class BaseTool < MCP::Tool
+  private
+  
+  def success_response(data)
+    { success: true, data: data }
+  end
+  
+  def error_response(message, **additional_data)
+    {
+      success: false,
+      error: message
+    }.merge(additional_data)
+  end
+end
+```
+
+**2. ツールでの使用例**
+```ruby
+# lib/calendar_color_mcp/tools/analyze_calendar_tool.rb
+class AnalyzeCalendarTool < BaseTool
+  def call(start_date:, end_date:, **context)
+    # ビジネスロジック実行...
+    
+    success_response(analysis_result)
+  rescue AuthenticationRequiredError => e
+    auth_url = extract_auth_manager(context).get_auth_url
+    error_response(e.message, auth_url: auth_url)
+  rescue InvalidParameterError => e
+    error_response("Invalid parameters: #{e.message}")
+  rescue CalendarAccessError => e
+    error_response("Calendar access failed: #{e.message}")
+  end
+end
+```
+
+**3. ErrorResponseBuilderの完全削除**
+```ruby
+# 削除対象
+# - class ErrorResponseBuilder
+# - 関連するビルダーパターンメソッド
+# - 複雑な with() チェーンメソッド
+```
+
+**簡素化の利点**:
+- ✅ **コード量削減**: 複雑なビルダークラスを廃止し、シンプルなヘルパーメソッドに置換
+- ✅ **保守性向上**: エラーレスポンス形式が一目で理解可能
+- ✅ **統一性確保**: 全ツールで同一のエラーレスポンス形式を使用
+- ✅ **拡張性維持**: additional_dataパラメータで必要時の拡張をサポート
 
 ### 3.2 ConfigurationServiceの作成
 
@@ -134,41 +225,43 @@ end
 #### ✅ 解決策: 設定管理一元化
 
 ```ruby
-# lib/calendar_color_mcp/services/configuration_service.rb
-class ConfigurationService
-  include Singleton
-  
-  def initialize
-    validate_environment
-  end
-  
-  def google_client_id
-    @google_client_id ||= ENV.fetch('GOOGLE_CLIENT_ID')
-  end
-  
-  def google_client_secret
-    @google_client_secret ||= ENV.fetch('GOOGLE_CLIENT_SECRET')
-  end
-  
-  private
-  
-  def validate_environment
-    missing_vars = []
+# lib/calendar_color_mcp/infrastructure/services/configuration_service.rb
+module Infrastructure
+  class ConfigurationService
+    include Singleton
     
-    missing_vars << 'GOOGLE_CLIENT_ID' if env_missing?('GOOGLE_CLIENT_ID')
-    missing_vars << 'GOOGLE_CLIENT_SECRET' if env_missing?('GOOGLE_CLIENT_SECRET')
+    def initialize
+      validate_environment
+    end
     
-    raise_missing_env_error(missing_vars) unless missing_vars.empty?
-  end
-  
-  def env_missing?(var_name)
-    ENV[var_name].nil? || ENV[var_name].empty?
-  end
-  
-  def raise_missing_env_error(missing_vars)
-    error_msg = build_error_message(missing_vars)
-    logger.error error_msg
-    raise error_msg
+    def google_client_id
+      @google_client_id ||= ENV.fetch('GOOGLE_CLIENT_ID')
+    end
+    
+    def google_client_secret
+      @google_client_secret ||= ENV.fetch('GOOGLE_CLIENT_SECRET')
+    end
+    
+    private
+    
+    def validate_environment
+      missing_vars = []
+      
+      missing_vars << 'GOOGLE_CLIENT_ID' if env_missing?('GOOGLE_CLIENT_ID')
+      missing_vars << 'GOOGLE_CLIENT_SECRET' if env_missing?('GOOGLE_CLIENT_SECRET')
+      
+      raise_missing_env_error(missing_vars) unless missing_vars.empty?
+    end
+    
+    def env_missing?(var_name)
+      ENV[var_name].nil? || ENV[var_name].empty?
+    end
+    
+    def raise_missing_env_error(missing_vars)
+      error_msg = build_error_message(missing_vars)
+      logger.error error_msg
+      raise error_msg
+    end
   end
 end
 ```
@@ -177,9 +270,9 @@ end
 
 #### Step 1: GoogleCalendarRepositoryのテスト
 ```ruby
-# spec/repositories/google_calendar_repository_spec.rb
-describe GoogleCalendarRepository do
-  subject(:repository) { GoogleCalendarRepository.new }
+# spec/infrastructure/repositories/google_calendar_repository_spec.rb
+describe Infrastructure::GoogleCalendarRepository do
+  subject(:repository) { Infrastructure::GoogleCalendarRepository.new }
   
   describe '#fetch_events' do
     it 'should fetch events from Google Calendar API' do
@@ -191,9 +284,9 @@ end
 
 #### Step 2: ConfigurationServiceのテスト
 ```ruby
-# spec/services/configuration_service_spec.rb
-describe ConfigurationService do
-  subject(:config) { ConfigurationService.instance }
+# spec/infrastructure/services/configuration_service_spec.rb
+describe Infrastructure::ConfigurationService do
+  subject(:config) { Infrastructure::ConfigurationService.instance }
   
   describe '#google_client_id' do
     context 'when GOOGLE_CLIENT_ID is set' do
@@ -229,41 +322,43 @@ end
 
 #### After: 責任分離
 ```ruby
-# lib/calendar_color_mcp/use_cases/analyze_calendar_use_case.rb
-class AnalyzeCalendarUseCase
-  def initialize(
-    calendar_repository: GoogleCalendarRepository.new,
-    filter_service: EventFilterService.new,
-    analyzer_service: TimeAnalyzer.new,
-    token_manager: TokenManager.instance,
-    auth_manager: GoogleCalendarAuthManager.instance
-  )
-    @calendar_repository = calendar_repository
-    @filter_service = filter_service
-    @analyzer_service = analyzer_service
-    @token_manager = token_manager
-    @auth_manager = auth_manager
-  end
-  
-  def execute(request_dto)
-    # 1. 認証確認
-    ensure_authenticated
-    
-    # 2. イベント取得
-    events = @calendar_repository.fetch_events(
-      request_dto.start_date, 
-      request_dto.end_date
+# lib/calendar_color_mcp/application/use_cases/analyze_calendar_use_case.rb
+module Application
+  class AnalyzeCalendarUseCase
+    def initialize(
+      calendar_repository: Infrastructure::GoogleCalendarRepository.new,
+      filter_service: Infrastructure::EventFilterService.new,
+      analyzer_service: TimeAnalyzer.new,
+      token_manager: TokenManager.instance,
+      auth_manager: GoogleCalendarAuthManager.instance
     )
+      @calendar_repository = calendar_repository
+      @filter_service = filter_service
+      @analyzer_service = analyzer_service
+      @token_manager = token_manager
+      @auth_manager = auth_manager
+    end
     
-    # 3. フィルタリング適用
-    filtered_events = @filter_service.apply_filters(events, request_dto.filters)
-    
-    # 4. 分析実行
-    @analyzer_service.analyze(filtered_events)
-  rescue AuthenticationRequiredError => e
-    handle_authentication_error(e)
-  rescue CalendarApiError => e
-    handle_api_error(e)
+    def execute(start_date:, end_date:, color_filters: nil, user_email:)
+      # 1. 認証確認
+      ensure_authenticated
+      
+      # 2. バリデーション
+      validate_date_range(start_date, end_date)
+      
+      # 3. イベント取得
+      events = @calendar_repository.fetch_events(start_date, end_date)
+      
+      # 4. フィルタリング適用
+      filtered_events = @filter_service.apply_filters(events, color_filters, user_email)
+      
+      # 5. 分析実行
+      @analyzer_service.analyze(filtered_events)
+    rescue AuthenticationRequiredError => e
+      handle_authentication_error(e)
+    rescue CalendarApiError => e
+      handle_api_error(e)
+    end
   end
 end
 ```
@@ -300,30 +395,27 @@ module CalendarColorMCP
 end
 ```
 
-### 2.3 DTOパターンの導入
+### 2.3 シンプルなキーワード引数アプローチ
 
 ```ruby
-# lib/calendar_color_mcp/dtos/analysis_request_dto.rb
-class AnalysisRequestDto
-  attr_reader :start_date, :end_date, :color_filters, :user_email
-  
-  def initialize(start_date:, end_date:, color_filters: nil, user_email:)
-    @start_date = validate_date(start_date)
-    @end_date = validate_date(end_date)
-    @color_filters = color_filters
-    @user_email = user_email
+# Use Caseでのシンプルなパラメータ受け取り
+module Application
+  class AnalyzeCalendarUseCase
+    def execute(start_date:, end_date:, color_filters: nil, user_email:)
+      # バリデーションはUse Case内で実行
+      validate_date_range(start_date, end_date)
+      
+      # ビジネスロジック実行
+      events = @calendar_repository.fetch_events(start_date, end_date)
+      filtered_events = @filter_service.apply_filters(events, color_filters, user_email)
+      @analyzer_service.analyze(filtered_events)
+    end
     
-    validate_date_range
-  end
-  
-  private
-  
-  def validate_date(date)
-    # 日付バリデーション
-  end
-  
-  def validate_date_range
-    # 日付範囲バリデーション
+    private
+    
+    def validate_date_range(start_date, end_date)
+      raise ArgumentError, "End date must be after start date" if end_date <= start_date
+    end
   end
 end
 ```
@@ -352,40 +444,39 @@ end
 
 #### After: 薄い層（Controller的役割）
 ```ruby
-# lib/calendar_color_mcp/tools/analyze_calendar_tool.rb (リファクタ後)
-class AnalyzeCalendarTool < BaseTool
-  def call(start_date:, end_date:, include_colors: nil, exclude_colors: nil, **context)
-    # 1. リクエストDTO作成
-    request = build_request_dto(start_date, end_date, include_colors, exclude_colors, context)
-    
-    # 2. Use Case実行
-    use_case = AnalyzeCalendarUseCase.new(
-      token_manager: extract_token_manager(context),
-      auth_manager: extract_auth_manager(context)
-    )
-    
-    result = use_case.execute(request)
-    
-    # 3. レスポンス変換
-    success_response(result.to_hash)
-  rescue AuthenticationRequiredError => e
-    auth_url = extract_auth_manager(context).get_auth_url
-    error_response(e.message).with(auth_url: auth_url).build
-  rescue InvalidParameterError => e
-    error_response("Invalid parameters: #{e.message}")
-  rescue CalendarAccessError => e
-    error_response("Calendar access failed: #{e.message}")
-  end
-  
-  private
-  
-  def build_request_dto(start_date, end_date, include_colors, exclude_colors, context)
-    AnalysisRequestDto.new(
-      start_date: Date.parse(start_date),
-      end_date: Date.parse(end_date),
-      color_filters: build_color_filters(include_colors, exclude_colors),
-      user_email: extract_user_email(context)
-    )
+# lib/calendar_color_mcp/interface_adapters/tools/analyze_calendar_tool.rb (リファクタ後)
+module InterfaceAdapters
+  class AnalyzeCalendarTool < BaseTool
+    def call(start_date:, end_date:, include_colors: nil, exclude_colors: nil, **context)
+      # 1. パラメータ変換
+      parsed_start_date = Date.parse(start_date)
+      parsed_end_date = Date.parse(end_date)
+      color_filters = build_color_filters(include_colors, exclude_colors)
+      user_email = extract_user_email(context)
+      
+      # 2. Use Case実行
+      use_case = Application::AnalyzeCalendarUseCase.new(
+        token_manager: extract_token_manager(context),
+        auth_manager: extract_auth_manager(context)
+      )
+      
+      result = use_case.execute(
+        start_date: parsed_start_date,
+        end_date: parsed_end_date,
+        color_filters: color_filters,
+        user_email: user_email
+      )
+      
+      # 3. レスポンス変換
+      success_response(result.to_hash)
+    rescue AuthenticationRequiredError => e
+      auth_url = extract_auth_manager(context).get_auth_url
+      error_response(e.message, auth_url: auth_url)
+    rescue InvalidParameterError => e
+      error_response("Invalid parameters: #{e.message}")
+    rescue CalendarAccessError => e
+      error_response("Calendar access failed: #{e.message}")
+    end
   end
 end
 ```
@@ -402,55 +493,57 @@ end
 ### 1.1 エンティティの作成
 
 ```ruby
-# lib/calendar_color_mcp/entities/calendar_event.rb
-class CalendarEvent
-  attr_reader :summary, :start_time, :end_time, :color_id, :attendees, :organizer
-  
-  def initialize(summary:, start_time:, end_time:, color_id:, attendees: [], organizer: nil)
-    @summary = summary
-    @start_time = start_time
-    @end_time = end_time
-    @color_id = color_id
-    @attendees = attendees
-    @organizer = organizer
+# lib/calendar_color_mcp/domain/entities/calendar_event.rb
+module Domain
+  class CalendarEvent
+    attr_reader :summary, :start_time, :end_time, :color_id, :attendees, :organizer
     
-    validate_time_range
-  end
-  
-  def duration_hours
-    return 0 unless @start_time && @end_time
-    (@end_time - @start_time) / 3600.0
-  end
-  
-  def attended_by?(user_email)
-    return true if organized_by_user?
-    return true if private_event?
+    def initialize(summary:, start_time:, end_time:, color_id:, attendees: [], organizer: nil)
+      @summary = summary
+      @start_time = start_time
+      @end_time = end_time
+      @color_id = color_id
+      @attendees = attendees
+      @organizer = organizer
+      
+      validate_time_range
+    end
     
-    user_attendee = find_user_attendee(user_email)
-    user_attendee&.accepted?
-  end
-  
-  def color_name
-    ColorConstants::COLOR_NAMES[@color_id] || ColorConstants::DEFAULT_COLOR_NAME
-  end
-  
-  private
-  
-  def organized_by_user?
-    @organizer&.self
-  end
-  
-  def private_event?
-    @attendees.nil? || @attendees.empty?
-  end
-  
-  def find_user_attendee(user_email)
-    @attendees&.find { |attendee| attendee.email == user_email || attendee.self }
-  end
-  
-  def validate_time_range
-    return unless @start_time && @end_time
-    raise ArgumentError, "End time must be after start time" if @end_time <= @start_time
+    def duration_hours
+      return 0 unless @start_time && @end_time
+      (@end_time - @start_time) / 3600.0
+    end
+    
+    def attended_by?(user_email)
+      return true if organized_by_user?
+      return true if private_event?
+      
+      user_attendee = find_user_attendee(user_email)
+      user_attendee&.accepted?
+    end
+    
+    def color_name
+      ColorConstants::COLOR_NAMES[@color_id] || ColorConstants::DEFAULT_COLOR_NAME
+    end
+    
+    private
+    
+    def organized_by_user?
+      @organizer&.self
+    end
+    
+    def private_event?
+      @attendees.nil? || @attendees.empty?
+    end
+    
+    def find_user_attendee(user_email)
+      @attendees&.find { |attendee| attendee.email == user_email || attendee.self }
+    end
+    
+    def validate_time_range
+      return unless @start_time && @end_time
+      raise ArgumentError, "End time must be after start time" if @end_time <= @start_time
+    end
   end
 end
 ```
@@ -458,34 +551,36 @@ end
 ### 1.2 値オブジェクトの作成
 
 ```ruby
-# lib/calendar_color_mcp/entities/time_span.rb
-class TimeSpan
-  attr_reader :start_date, :end_date
-  
-  def initialize(start_date, end_date)
-    @start_date = Date.parse(start_date.to_s)
-    @end_date = Date.parse(end_date.to_s)
+# lib/calendar_color_mcp/domain/entities/time_span.rb
+module Domain
+  class TimeSpan
+    attr_reader :start_date, :end_date
     
-    validate_date_range
-  end
-  
-  def days
-    (@end_date - @start_date).to_i + 1
-  end
-  
-  def include?(date)
-    date = Date.parse(date.to_s)
-    @start_date <= date && date <= @end_date
-  end
-  
-  def overlap?(other_span)
-    @start_date <= other_span.end_date && other_span.start_date <= @end_date
-  end
-  
-  private
-  
-  def validate_date_range
-    raise ArgumentError, "End date must be after or equal to start date" if @end_date < @start_date
+    def initialize(start_date, end_date)
+      @start_date = Date.parse(start_date.to_s)
+      @end_date = Date.parse(end_date.to_s)
+      
+      validate_date_range
+    end
+    
+    def days
+      (@end_date - @start_date).to_i + 1
+    end
+    
+    def include?(date)
+      date = Date.parse(date.to_s)
+      @start_date <= date && date <= @end_date
+    end
+    
+    def overlap?(other_span)
+      @start_date <= other_span.end_date && other_span.start_date <= @end_date
+    end
+    
+    private
+    
+    def validate_date_range
+      raise ArgumentError, "End date must be after or equal to start date" if @end_date < @start_date
+    end
   end
 end
 ```
@@ -493,14 +588,16 @@ end
 ### 1.3 Repository Interfaceの定義
 
 ```ruby
-# lib/calendar_color_mcp/repositories/calendar_repository_interface.rb
-module CalendarRepositoryInterface
-  def fetch_events(start_date, end_date)
-    raise NotImplementedError, "#{self.class} must implement #fetch_events"
-  end
-  
-  def get_user_email
-    raise NotImplementedError, "#{self.class} must implement #get_user_email"
+# lib/calendar_color_mcp/infrastructure/repositories/calendar_repository_interface.rb
+module Infrastructure
+  module CalendarRepositoryInterface
+    def fetch_events(start_date, end_date)
+      raise NotImplementedError, "#{self.class} must implement #fetch_events"
+    end
+    
+    def get_user_email
+      raise NotImplementedError, "#{self.class} must implement #get_user_email"
+    end
   end
 end
 ```
@@ -518,16 +615,16 @@ end
 
 #### Use Caseレベルでのテスト
 ```ruby
-# spec/use_cases/analyze_calendar_use_case_spec.rb
-describe AnalyzeCalendarUseCase do
-  let(:mock_calendar_repository) { instance_double(GoogleCalendarRepository) }
-  let(:mock_filter_service) { instance_double(EventFilterService) }
+# spec/application/use_cases/analyze_calendar_use_case_spec.rb
+describe Application::AnalyzeCalendarUseCase do
+  let(:mock_calendar_repository) { instance_double(Infrastructure::GoogleCalendarRepository) }
+  let(:mock_filter_service) { instance_double(Infrastructure::EventFilterService) }
   let(:mock_analyzer_service) { instance_double(TimeAnalyzer) }
   let(:mock_token_manager) { TokenManager.instance }  # 実際のSingleton使用
   let(:mock_auth_manager) { GoogleCalendarAuthManager.instance }  # 実際のSingleton使用
   
   subject(:use_case) do 
-    AnalyzeCalendarUseCase.new(
+    Application::AnalyzeCalendarUseCase.new(
       calendar_repository: mock_calendar_repository,
       filter_service: mock_filter_service,
       analyzer_service: mock_analyzer_service,
@@ -536,13 +633,9 @@ describe AnalyzeCalendarUseCase do
     )
   end
   
-  let(:request_dto) do
-    AnalysisRequestDto.new(
-      start_date: Date.parse('2024-01-01'),
-      end_date: Date.parse('2024-01-31'),
-      user_email: 'test@example.com'
-    )
-  end
+  let(:start_date) { Date.parse('2024-01-01') }
+  let(:end_date) { Date.parse('2024-01-31') }
+  let(:user_email) { 'test@example.com' }
   
   describe '#execute' do
     context 'when user is authenticated' do
@@ -554,12 +647,16 @@ describe AnalyzeCalendarUseCase do
       end
       
       it 'should analyze calendar events successfully' do
-        result = use_case.execute(request_dto)
+        result = use_case.execute(
+          start_date: start_date,
+          end_date: end_date,
+          user_email: user_email
+        )
         
         expect(result).to be_success
         expect(mock_calendar_repository).to have_received(:fetch_events).with(
-          request_dto.start_date, 
-          request_dto.end_date
+          start_date, 
+          end_date
         )
       end
     end
@@ -570,7 +667,13 @@ describe AnalyzeCalendarUseCase do
       end
       
       it 'should raise AuthenticationRequiredError' do
-        expect { use_case.execute(request_dto) }.to raise_error(AuthenticationRequiredError)
+        expect { 
+          use_case.execute(
+            start_date: start_date,
+            end_date: end_date,
+            user_email: user_email
+          ) 
+        }.to raise_error(AuthenticationRequiredError)
       end
     end
   end
@@ -580,7 +683,7 @@ end
 ### 5.2 統合テストの維持
 
 ```ruby
-# spec/integration/calendar_flow_spec.rb (既存テスト継続)
+# spec/integration/calendar_flow_spec.rb
 describe "Calendar Analysis Flow" do
   # 既存の統合テストを維持
   # リアーキテクチャ後も同じ動作を保証
@@ -610,14 +713,16 @@ ConfigurationService.instance   # 新規追加：環境変数管理一元化
 
 #### 依存性注入との共存
 ```ruby
-class AnalyzeCalendarUseCase
-  def initialize(
-    calendar_repository: GoogleCalendarRepository.new,     # 注入可能
-    token_repository: TokenManager.instance,              # Singleton
-    auth_service: GoogleCalendarAuthManager.instance,     # Singleton
-    config_service: ConfigurationService.instance         # Singleton
-  )
-    # テスト容易性とドメイン整合性の両立
+module Application
+  class AnalyzeCalendarUseCase
+    def initialize(
+      calendar_repository: Infrastructure::GoogleCalendarRepository.new,     # 注入可能
+      token_repository: TokenManager.instance,              # Singleton
+      auth_service: GoogleCalendarAuthManager.instance,     # Singleton
+      config_service: Infrastructure::ConfigurationService.instance         # Singleton
+    )
+      # テスト容易性とドメイン整合性の両立
+    end
   end
 end
 ```
@@ -633,10 +738,11 @@ end
 
 ```ruby
 # TDD Example: ConfigurationService
-describe ConfigurationService do
+# spec/infrastructure/services/configuration_service_spec.rb
+describe Infrastructure::ConfigurationService do
   # 1. Red: 失敗するテストを先に書く
   it 'should raise error when GOOGLE_CLIENT_ID is missing' do
-    expect { ConfigurationService.instance.google_client_id }.to raise_error
+    expect { Infrastructure::ConfigurationService.instance.google_client_id }.to raise_error
   end
   
   # 2. Green: 最小限の実装
@@ -653,52 +759,65 @@ end
 
 ```
 lib/calendar_color_mcp/
-├── entities/                        # Domain層
-│   ├── calendar_event.rb           # カレンダーイベントエンティティ
-│   ├── time_span.rb                # 時間範囲値オブジェクト
-│   ├── auth_token.rb               # 認証トークンエンティティ
-│   └── event_filter.rb             # イベントフィルタ値オブジェクト
-├── use_cases/                       # Application層
-│   ├── analyze_calendar_use_case.rb # カレンダー分析Use Case
-│   ├── authenticate_user_use_case.rb# 認証Use Case
-│   ├── check_auth_status_use_case.rb# 認証状態確認Use Case
-│   └── filter_events_by_color_use_case.rb # 色別フィルタリングUse Case
-├── repositories/                    # Interface Adapters層
-│   ├── calendar_repository_interface.rb # Repository Interface
-│   ├── google_calendar_repository.rb   # Google Calendar API Repository
-│   └── token_file_repository.rb        # Token File Repository
-├── services/                        # Infrastructure層
-│   ├── configuration_service.rb        # 設定管理サービス
-│   ├── event_filter_service.rb         # イベントフィルタリングサービス
-│   └── debug_logger_decorator.rb       # デバッグログDecorator
-├── dtos/                           # Data Transfer Objects
-│   ├── analysis_request_dto.rb     # 分析リクエストDTO
-│   └── analysis_response_dto.rb    # 分析レスポンスDTO
-├── tools/                          # Interface Adapters層（既存）
-│   ├── analyze_calendar_tool.rb    # Controller化
-│   ├── start_auth_tool.rb          # Controller化
-│   ├── check_auth_status_tool.rb   # Controller化
-│   ├── complete_auth_tool.rb       # Controller化
-│   └── base_tool.rb                # 既存維持
-└── (既存ファイル群)                 # 段階的移行
-    ├── color_constants.rb          # 既存維持
-    ├── color_filter_manager.rb     # 既存維持
-    ├── errors.rb                   # 拡張
-    ├── loggable.rb                 # 既存維持
-    ├── logger_manager.rb           # 既存維持
-    ├── server.rb                   # 部分修正
-    ├── time_analyzer.rb            # 部分修正
-    ├── token_manager.rb            # 既存維持（Singleton継続）
-    └── google_calendar_auth_manager.rb # 部分修正（Singleton継続）
+├── domain/                          # Domain層
+│   ├── entities/
+│   │   ├── calendar_event.rb       # カレンダーイベントエンティティ
+│   │   ├── time_span.rb            # 時間範囲値オブジェクト
+│   │   ├── auth_token.rb           # 認証トークンエンティティ
+│   │   └── event_filter.rb         # イベントフィルタ値オブジェクト
+│   └── services/
+│       └── event_duration_calculation_service.rb # イベント期間計算
+├── application/                     # Application層
+│   ├── use_cases/
+│   │   ├── analyze_calendar_use_case.rb # カレンダー分析Use Case
+│   │   ├── authenticate_user_use_case.rb# 認証Use Case
+│   │   ├── check_auth_status_use_case.rb# 認証状態確認Use Case
+│   │   └── filter_events_by_color_use_case.rb # 色別フィルタリングUse Case
+│   └── services/
+│       └── calendar_orchestration_service.rb # 複数UseCase調整
+├── interface_adapters/              # Interface Adapters層
+│   └── tools/
+│       ├── analyze_calendar_tool.rb # Controller化
+│       ├── start_auth_tool.rb       # Controller化
+│       ├── check_auth_status_tool.rb# Controller化
+│       ├── complete_auth_tool.rb    # Controller化
+│       └── base_tool.rb             # 既存維持
+├── infrastructure/                  # Infrastructure層
+│   ├── repositories/
+│   │   ├── calendar_repository_interface.rb # Repository Interface
+│   │   ├── google_calendar_repository.rb   # Google Calendar API Repository
+│   │   └── token_file_repository.rb        # Token File Repository
+│   ├── services/
+│   │   ├── configuration_service.rb        # 設定管理サービス
+│   │   └── event_filter_service.rb         # イベントフィルタリングサービス
+│   └── decorators/
+│       └── debug_logger_decorator.rb       # デバッグログDecorator
+├── calendar_color_mcp.rb           # ルートファイル
+├── color_constants.rb              # 既存維持
+├── color_filter_manager.rb         # 既存維持
+├── errors.rb                       # 拡張
+├── google_calendar_auth_manager.rb # 部分修正
+├── google_calendar_client.rb       # 大幅リファクタ予定
+├── loggable.rb                     # 既存維持
+├── logger_manager.rb               # 既存維持
+├── server.rb                       # 部分修正
+├── time_analyzer.rb                # 部分修正
+└── token_manager.rb                # 既存維持
+
+# モジュール名前空間設計（簡潔化）
+# Domain::CalendarEvent
+# Application::AnalyzeCalendarUseCase  
+# Infrastructure::GoogleCalendarRepository
+# InterfaceAdapters::AnalyzeCalendarTool
 ```
 
 ### 段階的移行戦略
 
 ```
-Phase 3: services/ + repositories/ 作成
-Phase 2: use_cases/ + dtos/ 作成  
-Phase 4: tools/ リファクタリング
-Phase 1: entities/ 作成
+Phase 3: infrastructure/services/ + infrastructure/repositories/ + infrastructure/decorators/ 作成
+Phase 2: application/use_cases/ + application/services/ 作成  
+Phase 4: interface_adapters/tools/ リファクタリング
+Phase 1: domain/entities/ + domain/services/ 作成
 Phase 5: 統合テスト・既存ファイル最適化
 ```
 
@@ -744,11 +863,13 @@ def get_events(start_date, end_date)
 end
 
 # After: 責任分離
-class AnalyzeCalendarUseCase
-  def execute(request_dto)
-    events = @calendar_repository.fetch_events(...)      # API責任
-    filtered_events = @filter_service.apply_filters(...) # フィルタ責任
-    @analyzer_service.analyze(filtered_events)           # 分析責任
+module Application
+  class AnalyzeCalendarUseCase
+    def execute(start_date:, end_date:, color_filters: nil, user_email:)
+      events = @calendar_repository.fetch_events(start_date, end_date)      # API責任
+      filtered_events = @filter_service.apply_filters(events, color_filters, user_email) # フィルタ責任
+      @analyzer_service.analyze(filtered_events)           # 分析責任
+    end
   end
 end
 ```
