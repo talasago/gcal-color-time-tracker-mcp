@@ -118,91 +118,6 @@ module Infrastructure
 end
 ```
 
-### 3.3 ErrorResponseBuilderの簡素化
-
-#### 📋 現在の問題
-```ruby
-# lib/calendar_color_mcp/tools/base_tool.rb:44-70 (設計決定書で確認済み)
-class ErrorResponseBuilder
-  def initialize(message)
-    @data = { success: false, error: message }
-  end
-  
-  def with(key, value = nil, **data)
-    # 複雑なビルダーパターン実装
-    if value.nil?
-      @data.merge!(data)
-    else
-      @data[key] = value
-    end
-    self
-  end
-  
-  def build
-    @data
-  end
-end
-```
-
-**問題点**:
-- シンプルなエラーレスポンスに対する過度な抽象化
-- ビルダーパターンの実装が複雑で、使用箇所も限定的
-- メンテナンスコストが機能の価値を上回る
-
-#### ✅ 解決策: 標準エラーレスポンス採用
-
-**1. シンプルなエラーレスポンス形式の統一**
-```ruby
-# lib/calendar_color_mcp/tools/base_tool.rb (リファクタ後)
-class BaseTool < MCP::Tool
-  private
-  
-  def success_response(data)
-    { success: true, data: data }
-  end
-  
-  def error_response(message, **additional_data)
-    {
-      success: false,
-      error: message
-    }.merge(additional_data)
-  end
-end
-```
-
-**2. ツールでの使用例**
-```ruby
-# lib/calendar_color_mcp/tools/analyze_calendar_tool.rb
-class AnalyzeCalendarTool < BaseTool
-  def call(start_date:, end_date:, **context)
-    # ビジネスロジック実行...
-    
-    success_response(analysis_result)
-  rescue AuthenticationRequiredError => e
-    auth_url = extract_auth_manager(context).get_auth_url
-    error_response(e.message, auth_url: auth_url)
-  rescue InvalidParameterError => e
-    error_response("Invalid parameters: #{e.message}")
-  rescue CalendarAccessError => e
-    error_response("Calendar access failed: #{e.message}")
-  end
-end
-```
-
-**3. ErrorResponseBuilderの完全削除**
-```ruby
-# 削除対象
-# - class ErrorResponseBuilder
-# - 関連するビルダーパターンメソッド
-# - 複雑な with() チェーンメソッド
-```
-
-**簡素化の利点**:
-- ✅ **コード量削減**: 複雑なビルダークラスを廃止し、シンプルなヘルパーメソッドに置換
-- ✅ **保守性向上**: エラーレスポンス形式が一目で理解可能
-- ✅ **統一性確保**: 全ツールで同一のエラーレスポンス形式を使用
-- ✅ **拡張性維持**: additional_dataパラメータで必要時の拡張をサポート
-
 ### 3.2 ConfigurationServiceの作成
 
 #### 📋 現在の問題
@@ -429,7 +344,128 @@ end
 - **統一的なエラーレスポンス**: レスポンス形式の標準化
 - **Controller的役割**: リクエスト/レスポンス変換のみ
 
-### 4.1 MCPツールのController化
+### 4.1 BaseToolのモジュール名前空間変更
+
+#### Base Tool層のInterface Adapters移行
+```ruby
+# lib/calendar_color_mcp/tools/base_tool.rb
+# Before: CalendarColorMCP::BaseTool
+# After: InterfaceAdapters::BaseTool
+
+module InterfaceAdapters
+  class BaseTool < MCP::Tool
+    include CalendarColorMCP::Loggable
+    
+    # 既存のメソッドをそのまま移行
+    class << self
+      protected
+      
+      def extract_auth_manager(context)
+        # 既存の実装
+      end
+      
+      def success_response(data)
+        # 既存の実装
+      end
+      
+      def error_response(message)
+        ErrorResponseBuilder.new(message)
+      end
+    end
+  end
+end
+```
+
+### 4.2 ErrorResponseBuilderの簡素化
+
+#### 📋 現在の問題
+```ruby
+# lib/calendar_color_mcp/tools/base_tool.rb:44-70 (設計決定書で確認済み)
+class ErrorResponseBuilder
+  def initialize(message)
+    @data = { success: false, error: message }
+  end
+  
+  def with(key, value = nil, **data)
+    # 複雑なビルダーパターン実装
+    if key.is_a?(Hash)
+      @data.merge!(key)
+    elsif !data.empty?
+      @data.merge!(data)
+    else
+      @data[key] = value
+    end
+    self
+  end
+  
+  def build
+    MCP::Tool::Response.new([{
+      type: "text",
+      text: @data.to_json
+    }])
+  end
+end
+```
+
+**問題点**:
+- シンプルなエラーレスポンスに対する過度な抽象化
+- ビルダーパターンの実装が複雑で、使用箇所も限定的
+- メンテナンスコストが機能の価値を上回る
+
+#### ✅ 解決策: 標準エラーレスポンス採用
+
+**1. BaseTool の InterfaceAdapters モジュールへの移行**
+```ruby
+# lib/calendar_color_mcp/tools/base_tool.rb (リファクタ後)
+module InterfaceAdapters
+  class BaseTool < MCP::Tool
+    include CalendarColorMCP::Loggable
+    
+    class << self
+      protected
+      
+      def success_response(data)
+        response_data = {
+          success: true
+        }.merge(data)
+
+        MCP::Tool::Response.new([{
+          type: "text",
+          text: response_data.to_json
+        }])
+      end
+      
+      def error_response(message, **additional_data)
+        response_data = {
+          success: false,
+          error: message
+        }.merge(additional_data)
+
+        MCP::Tool::Response.new([{
+          type: "text",
+          text: response_data.to_json
+        }])
+      end
+    end
+  end
+end
+```
+
+**2. ErrorResponseBuilderの完全削除**
+```ruby
+# 削除対象
+# - class ErrorResponseBuilder
+# - 関連するビルダーパターンメソッド
+# - 複雑な with() チェーンメソッド
+```
+
+**簡素化の利点**:
+- ✅ **コード量削減**: 複雑なビルダークラスを廃止し、シンプルなヘルパーメソッドに置換
+- ✅ **保守性向上**: エラーレスポンス形式が一目で理解可能
+- ✅ **統一性確保**: 全ツールで同一のエラーレスポンス形式を使用
+- ✅ **拡張性維持**: additional_dataパラメータで必要時の拡張をサポート
+
+### 4.2 MCPツールのController化
 
 #### Before: ビジネスロジック含有
 ```ruby
