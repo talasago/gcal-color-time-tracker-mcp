@@ -1,4 +1,5 @@
 require 'singleton'
+require_relative '../errors'
 require_relative '../../loggable'
 
 module Infrastructure
@@ -36,7 +37,7 @@ module Infrastructure
     def raise_missing_env_error(missing_vars)
       error_msg = build_error_message(missing_vars)
       logger.error error_msg
-      raise error_msg
+      raise Infrastructure::ConfigurationError, error_msg
     end
     
     def build_error_message(missing_vars)

@@ -50,9 +50,9 @@ describe Infrastructure::GoogleCalendarRepository do
           .and_raise(Google::Apis::ClientError.new('API Error'))
       end
 
-      it 'should raise CalendarApiError' do
+      it 'should raise ExternalServiceError' do
         expect { repository.fetch_events(start_date, end_date) }
-          .to raise_error(CalendarColorMCP::CalendarApiError, /API Error/)
+          .to raise_error(Infrastructure::ExternalServiceError, /API Error/)
       end
     end
   end
@@ -78,9 +78,9 @@ describe Infrastructure::GoogleCalendarRepository do
           .and_raise(Google::Apis::ClientError.new('API Error'))
       end
 
-      it 'should raise CalendarApiError' do
+      it 'should raise ExternalServiceError' do
         expect { repository.get_user_email }
-          .to raise_error(CalendarColorMCP::CalendarApiError, /API Error/)
+          .to raise_error(Infrastructure::ExternalServiceError, /API Error/)
       end
     end
   end

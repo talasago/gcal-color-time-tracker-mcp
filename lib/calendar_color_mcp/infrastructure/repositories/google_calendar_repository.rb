@@ -1,5 +1,6 @@
 require 'google/apis/calendar_v3'
 require_relative '../../errors'
+require_relative '../errors'
 require_relative '../../loggable'
 
 module Infrastructure
@@ -22,9 +23,9 @@ module Infrastructure
 
       response.items
     rescue Google::Apis::ClientError, Google::Apis::ServerError => e
-      raise CalendarColorMCP::CalendarApiError, "カレンダーAPIエラー: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "カレンダーAPIエラー: #{e.message}"
     rescue => e
-      raise CalendarColorMCP::CalendarApiError, "カレンダーイベントの取得に失敗しました: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "カレンダーイベントの取得に失敗しました: #{e.message}"
     end
 
     # NOTE: TODO: そもそもpublicメソッド？？にする必要があるのか？
@@ -34,9 +35,9 @@ module Infrastructure
       calendar_info = @service.get_calendar('primary')
       calendar_info.id
     rescue Google::Apis::ClientError, Google::Apis::ServerError => e
-      raise CalendarColorMCP::CalendarApiError, "ユーザー情報の取得に失敗しました: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "ユーザー情報の取得に失敗しました: #{e.message}"
     rescue => e
-      raise CalendarColorMCP::CalendarApiError, "ユーザーメール取得エラー: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "ユーザーメール取得エラー: #{e.message}"
     end
 
     # TODO: そもそもpublicメソッド？？にする必要があるのか？
