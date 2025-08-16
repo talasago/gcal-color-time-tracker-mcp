@@ -277,7 +277,8 @@ lib/calendar_color_mcp/
 │   │   ├── auth_token.rb           # 認証トークンエンティティ
 │   │   └── event_filter.rb         # イベントフィルタ値オブジェクト
 │   └── services/
-│       └── event_duration_calculation_service.rb # イベント期間計算
+│       ├── event_duration_calculation_service.rb # イベント期間計算
+│       └── event_filter_service.rb         # イベントフィルタリング（ビジネスルール）
 ├── application/                     # Application層
 │   ├── use_cases/
 │   │   ├── analyze_calendar_use_case.rb  # カレンダー分析UseCase
@@ -296,9 +297,8 @@ lib/calendar_color_mcp/
     ├── repositories/
     │   ├── google_calendar_repository.rb   # Google Calendar API実装
     │   └── token_file_repository.rb        # トークンファイル管理
-    ├── services/
-    │   ├── configuration_service.rb        # 設定管理サービス
-    │   └── event_filter_service.rb         # イベントフィルタリング
+    └── services/
+        └── configuration_service.rb        # 設定管理サービス
     # デバッグログ装飾はgoogle_calendar_repository.rb内にGoogleCalendarRepositoryLogDecoratorとして統合
 
 # モジュール名前空間設計（簡潔化）
@@ -441,6 +441,73 @@ end
 ```
 
 #### 1.2 ドメインサービス作成
+
+**EventFilterService（ビジネスルールフィルタリング）**
+```ruby
+# lib/calendar_color_mcp/domain/services/event_filter_service.rb
+module Domain
+  class EventFilterService
+    def apply_filters(events, color_filters, user_email)
+      # 参加イベントフィルタリング（ビジネスルール）
+      attended_events = events.select { |event| event.attended_by?(user_email) }
+      
+      # 色によるフィルタリング（ビジネスルール）
+      filter_by_colors(attended_events, color_filters)
+    end
+    
+    private
+    
+    def filter_by_colors(events, color_filters)
+      return events unless color_filters
+      
+      # 色による包含/除外ロジック（ドメインルール）
+      if color_filters[:include_colors]
+        events.select { |event| color_filters[:include_colors].include?(event.color_id) }
+      elsif color_filters[:exclude_colors]
+        events.reject { |event| color_filters[:exclude_colors].include?(event.color_id) }
+      else
+        events
+      end
+    end
+  end
+end
+```
+
+**TimeAnalysisService（既存TimeAnalyzerの移行）**
+```ruby
+# lib/calendar_color_mcp/domain/services/time_analysis_service.rb
+module Domain
+  class TimeAnalysisService
+    def analyze(filtered_events)
+      # filtered_eventsは Domain::EventFilterService により
+      # 事前にフィルタリング済みのイベント配列
+      color_breakdown = analyze_by_color(filtered_events)
+      summary = generate_summary(color_breakdown, filtered_events.count)
+      
+      {
+        color_breakdown: color_breakdown,
+        summary: summary
+      }
+    end
+    
+    private
+    
+    def analyze_by_color(events)
+      # 既存TimeAnalyzerのロジックを移行
+    end
+    
+    def calculate_duration(event)
+      # 既存TimeAnalyzerのロジックを移行
+    end
+    
+    def generate_summary(color_breakdown, event_count)
+      # 既存TimeAnalyzerのロジックを移行
+    end
+  end
+end
+```
+
+**EventDurationCalculationService（期間計算ドメインロジック）**
 ```ruby
 # lib/calendar_color_mcp/domain/services/event_duration_calculation_service.rb
 module Domain
@@ -451,6 +518,11 @@ module Domain
   end
 end
 ```
+
+**Domain層配置の重要性**:
+- **フィルタリングはビジネスルール**: 参加判定、色選択はドメインロジック
+- **Infrastructure層は技術詳細のみ**: API変換、設定管理に責任を限定
+- **依存関係逆転原則**: ApplicationがDomainサービスに依存する正しい方向
 
 ### Phase 2: Application層の実装（3-4日）
 
@@ -467,7 +539,7 @@ module Application
   class AnalyzeCalendarUseCase
     def initialize(
       calendar_repository:,  # Infrastructure層への依存注入
-      event_filter_service:, # Infrastructure層サービス
+      event_filter_service:, # Domain層サービス
       token_manager: TokenManager.instance,
       auth_manager: GoogleCalendarAuthManager.instance
     )
@@ -484,7 +556,7 @@ module Application
       # 2. Infrastructure層を通じてデータ取得
       events = @calendar_repository.fetch_events(time_span.start_date, time_span.end_date)
       
-      # 3. Infrastructure層サービスでフィルタリング
+      # 3. Domain層サービスでフィルタリング
       filtered_events = @event_filter_service.apply_filters(events, color_filters, user_email)
       
       # 4. Domain層サービスで分析
@@ -591,11 +663,30 @@ module Infrastructure
   end
 end
 
-# lib/calendar_color_mcp/infrastructure/services/event_filter_service.rb
-module Infrastructure
+# lib/calendar_color_mcp/domain/services/event_filter_service.rb
+module Domain
   class EventFilterService
     def apply_filters(events, color_filters, user_email)
-      # フィルタリングロジック（Infrastructure層の責任）
+      # 参加イベントフィルタリング（ビジネスルール）
+      attended_events = events.select { |event| event.attended_by?(user_email) }
+      
+      # 色によるフィルタリング（ビジネスルール）
+      filter_by_colors(attended_events, color_filters)
+    end
+    
+    private
+    
+    def filter_by_colors(events, color_filters)
+      return events unless color_filters
+      
+      # 色による包含/除外ロジック（ドメインルール）
+      if color_filters[:include_colors]
+        events.select { |event| color_filters[:include_colors].include?(event.color_id) }
+      elsif color_filters[:exclude_colors]
+        events.reject { |event| color_filters[:exclude_colors].include?(event.color_id) }
+      else
+        events
+      end
     end
   end
 end
@@ -662,7 +753,7 @@ module InterfaceAdapters
       # 2. Application層UseCaseの組み立て
       use_case = Application::AnalyzeCalendarUseCase.new(
         calendar_repository: Infrastructure::GoogleCalendarRepository.new,
-        event_filter_service: Infrastructure::EventFilterService.new,
+        event_filter_service: Domain::EventFilterService.new,
         token_manager: extract_token_manager(context),
         auth_manager: extract_auth_manager(context)
       )

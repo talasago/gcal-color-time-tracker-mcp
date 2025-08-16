@@ -1,7 +1,7 @@
 require 'spec_helper'
-require_relative '../../../lib/calendar_color_mcp/infrastructure/services/event_filter_service'
+require_relative '../../../lib/calendar_color_mcp/domain/services/event_filter_service'
 
-describe Infrastructure::EventFilterService do
+describe Domain::EventFilterService do
   subject(:service) { described_class.new }
 
   let(:user_email) { 'test@example.com' }

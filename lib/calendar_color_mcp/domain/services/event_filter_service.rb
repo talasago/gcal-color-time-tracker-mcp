@@ -1,4 +1,4 @@
-module Infrastructure
+module Domain
   class EventFilterService
     def filter_attended_events(events, user_email)
       events.select { |event| attended_event?(event, user_email) }

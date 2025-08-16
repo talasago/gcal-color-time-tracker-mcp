@@ -84,17 +84,24 @@ end
 
 **2. EventFilterService（フィルタリング責任）**
 ```ruby
-# lib/calendar_color_mcp/infrastructure/services/event_filter_service.rb  
-module Infrastructure
+# lib/calendar_color_mcp/domain/services/event_filter_service.rb  
+module Domain
   class EventFilterService
     def filter_attended_events(events, user_email)
-      events.select { |event| attended_event?(event, user_email) }
+      events.select { |event| event.attended_by?(user_email) }
     end
     
-    private
-    
-    def attended_event?(event, user_email)
-      # 既存のフィルタリングロジックを移動
+    def filter_by_colors(events, color_filters)
+      return events unless color_filters
+      
+      # 色による包含/除外ロジック（ドメインルール）
+      if color_filters[:include_colors]
+        events.select { |event| color_filters[:include_colors].include?(event.color_id) }
+      elsif color_filters[:exclude_colors]
+        events.reject { |event| color_filters[:exclude_colors].include?(event.color_id) }
+      else
+        events
+      end
     end
   end
 end
@@ -242,8 +249,8 @@ module Application
   class AnalyzeCalendarUseCase
     def initialize(
       calendar_repository: Infrastructure::GoogleCalendarRepository.new,
-      filter_service: Infrastructure::EventFilterService.new,
-      analyzer_service: TimeAnalyzer.new,
+      filter_service: Domain::EventFilterService.new,
+      analyzer_service: Domain::TimeAnalysisService.new,
       token_manager: TokenManager.instance,
       auth_manager: GoogleCalendarAuthManager.instance
     )
@@ -265,11 +272,13 @@ module Application
       debug_repository = Infrastructure::GoogleCalendarRepositoryLogDecorator.new(@calendar_repository)
       events = debug_repository.fetch_events(start_date, end_date)
       
-      # 4. フィルタリング適用
+      # 4. フィルタリング適用（Domain::EventFilterService）
       filtered_events = @filter_service.apply_filters(events, color_filters, user_email)
       
-      # 5. 分析実行
-      @analyzer_service.analyze(filtered_events)
+      # 5. 時間分析実行（Domain::TimeAnalysisService）
+      analysis_result = @analyzer_service.analyze(filtered_events)
+      
+      analysis_result
     rescue Application::AuthenticationError => e
       handle_authentication_error(e)
     rescue Infrastructure::ExternalServiceError => e
@@ -692,7 +701,136 @@ module Domain
 end
 ```
 
-### 1.3 Repository Interfaceの定義
+### 1.3 ドメインサービス作成
+
+#### EventFilterService（ビジネスルールフィルタリング）
+
+**重要: EventFilterServiceはDomain層に配置**
+
+```ruby
+# lib/calendar_color_mcp/domain/services/event_filter_service.rb
+module Domain
+  class EventFilterService
+    def apply_filters(events, color_filters, user_email)
+      # 参加イベントフィルタリング（ビジネスルール）
+      attended_events = events.select { |event| event.attended_by?(user_email) }
+      
+      # 色によるフィルタリング（ビジネスルール）
+      filter_by_colors(attended_events, color_filters)
+    end
+    
+    private
+    
+    def filter_by_colors(events, color_filters)
+      return events unless color_filters
+      
+      # 色による包含/除外ロジック（ドメインルール）
+      if color_filters[:include_colors]
+        events.select { |event| color_filters[:include_colors].include?(event.color_id) }
+      elsif color_filters[:exclude_colors]
+        events.reject { |event| color_filters[:exclude_colors].include?(event.color_id) }
+      else
+        events
+      end
+    end
+  end
+end
+```
+
+**Domain層配置の根拠**:
+- **参加イベント判定**: 主催者/招待承諾/プライベートイベントの判定はビジネスルール
+- **色フィルタリング**: 色IDによる包含/除外選択もビジネスルール
+- **再利用性**: 他のUse Caseでも同じフィルタリングルールを使用
+- **依存関係逆転原則**: ApplicationがDomainサービスに依存する正しい方向
+
+**Infrastructure層との責任分離**:
+- **Domain層**: ビジネスルールに基づくフィルタリング
+- **Infrastructure層**: 技術的詳細（API変換、設定管理）のみ
+
+#### TimeAnalysisService（既存TimeAnalyzerの移行）
+
+**重要: 既存TimeAnalyzerをDomain層に移行**
+
+```ruby
+# lib/calendar_color_mcp/domain/services/time_analysis_service.rb
+module Domain
+  class TimeAnalysisService
+    include CalendarColorMCP::Loggable
+
+    def analyze(filtered_events)
+      # filtered_eventsは Domain::EventFilterService により
+      # 事前にフィルタリング済みのイベント配列
+      color_breakdown = analyze_by_color(filtered_events)
+      summary = generate_summary(color_breakdown, filtered_events.count)
+
+      {
+        color_breakdown: color_breakdown,
+        summary: summary
+      }
+    end
+
+    private
+
+    def analyze_by_color(events)
+      color_data = {}
+
+      events.each do |event|
+        color_id = event.color_id&.to_i || ColorConstants.default_color_id
+        color_name = ColorConstants.color_name(color_id) || "不明 (#{color_id})"
+
+        color_data[color_name] ||= {
+          total_hours: 0.0,
+          event_count: 0,
+          events: []
+        }
+
+        duration = calculate_duration(event)
+        color_data[color_name][:total_hours] += duration
+        color_data[color_name][:event_count] += 1
+        color_data[color_name][:events] << {
+          title: event.summary || '（タイトルなし）',
+          duration: duration,
+          start_time: format_event_time(event)
+        }
+      end
+
+      # 時間順でソート
+      color_data = color_data.sort_by { |_, data| -data[:total_hours] }.to_h
+
+      # 時間を四捨五入
+      color_data.each do |_, data|
+        data[:total_hours] = data[:total_hours].round(2)
+      end
+
+      color_data
+    end
+
+    def calculate_duration(event)
+      # 既存TimeAnalyzerのcalculate_durationロジックを移行
+    end
+
+    def generate_summary(color_breakdown, event_count)
+      # 既存TimeAnalyzerのgenerate_summaryロジックを移行
+    end
+
+    def format_event_time(event)
+      # 既存TimeAnalyzerのformat_event_timeロジックを移行
+    end
+  end
+end
+```
+
+**責任分離の明確化**:
+- **Domain::EventFilterService**: 参加イベント判定と色フィルタリング
+- **Domain::TimeAnalysisService**: フィルタリング済みイベントの時間分析
+- **Application::AnalyzeCalendarUseCase**: 両サービスの協調
+
+**移行の利点**:
+- シグネチャ統一: `analyze(filtered_events)`で`AnalyzeCalendarUseCase`との整合性確保
+- 色フィルタリング責任の分離: `TimeAnalyzer`から複雑な色フィルタロジックを除去
+- 既存ロジック保持: 時間計算とサマリー生成の実績あるロジックを維持
+
+### 1.4 Repository Interfaceの定義
 
 ```ruby
 # lib/calendar_color_mcp/infrastructure/repositories/calendar_repository_interface.rb
@@ -725,7 +863,7 @@ end
 # spec/application/use_cases/analyze_calendar_use_case_spec.rb
 describe Application::AnalyzeCalendarUseCase do
   let(:mock_calendar_repository) { instance_double(Infrastructure::GoogleCalendarRepository) }
-  let(:mock_filter_service) { instance_double(Infrastructure::EventFilterService) }
+  let(:mock_filter_service) { instance_double(Domain::EventFilterService) }
   let(:mock_analyzer_service) { instance_double(TimeAnalyzer) }
   let(:mock_token_manager) { TokenManager.instance }  # 実際のSingleton使用
   let(:mock_auth_manager) { GoogleCalendarAuthManager.instance }  # 実際のSingleton使用
@@ -873,6 +1011,8 @@ lib/calendar_color_mcp/
 │   │   ├── auth_token.rb           # 認証トークンエンティティ
 │   │   └── event_filter.rb         # イベントフィルタ値オブジェクト
 │   └── services/
+│       ├── time_analysis_service.rb        # 時間分析（既存TimeAnalyzerから移行）
+│       ├── event_filter_service.rb         # イベントフィルタリング（ビジネスルール）
 │       └── event_duration_calculation_service.rb # イベント期間計算
 ├── application/                     # Application層
 │   ├── use_cases/
@@ -894,9 +1034,8 @@ lib/calendar_color_mcp/
 │   │   ├── calendar_repository_interface.rb # Repository Interface
 │   │   ├── google_calendar_repository.rb   # Google Calendar API Repository (GoogleCalendarRepositoryLogDecoratorを含む)
 │   │   └── token_file_repository.rb        # Token File Repository
-│   ├── services/
-│   │   ├── configuration_service.rb        # 設定管理サービス
-│   │   └── event_filter_service.rb         # イベントフィルタリングサービス
+│   └── services/
+│       └── configuration_service.rb        # 設定管理サービス
 ├── calendar_color_mcp.rb           # ルートファイル
 ├── color_constants.rb              # 既存維持
 ├── color_filter_manager.rb         # 既存維持
@@ -906,11 +1045,13 @@ lib/calendar_color_mcp/
 ├── loggable.rb                     # 既存維持
 ├── logger_manager.rb               # 既存維持
 ├── server.rb                       # 部分修正
-├── time_analyzer.rb                # 部分修正
+├── time_analyzer.rb                # 段階的廃止予定（Domain::TimeAnalysisServiceに移行）
 └── token_manager.rb                # 既存維持
 
 # モジュール名前空間設計（簡潔化）
 # Domain::CalendarEvent
+# Domain::TimeAnalysisService          # 既存TimeAnalyzerから移行
+# Domain::EventFilterService           # ビジネスルール
 # Application::AnalyzeCalendarUseCase  
 # Infrastructure::GoogleCalendarRepository
 # InterfaceAdapters::AnalyzeCalendarTool
@@ -974,8 +1115,8 @@ module Application
     def execute(start_date:, end_date:, color_filters: nil, user_email:)
       debug_repository = Infrastructure::GoogleCalendarRepositoryLogDecorator.new(@calendar_repository)
       events = debug_repository.fetch_events(start_date, end_date)      # API責任（デバッグログ付き）
-      filtered_events = @filter_service.apply_filters(events, color_filters, user_email) # フィルタ責任
-      @analyzer_service.analyze(filtered_events)           # 分析責任
+      filtered_events = @filter_service.apply_filters(events, color_filters, user_email) # フィルタ責任（Domain::EventFilterService）
+      @analyzer_service.analyze(filtered_events)           # 分析責任（Domain::TimeAnalysisService）
     end
   end
 end
@@ -1051,12 +1192,18 @@ end
 ```ruby
 # まず各Use Caseを独立して実装
 module Application
-  class AnalyzeCalendarUseCase; end
+  class AnalyzeCalendarUseCase; end    # Domain::TimeAnalysisService使用
   class AuthenticateUserUseCase; end
   class CheckAuthStatusUseCase; end
-  class FilterEventsByColorUseCase; end
+  class FilterEventsByColorUseCase; end  # Domain::EventFilterService使用
 end
 ```
+
+**Phase 1実装順序の更新**:
+1. **Domain::TimeAnalysisService作成**: 既存TimeAnalyzerから移行（最優先）
+2. **Domain::EventFilterService作成**: 色フィルタリング分離
+3. **Application::AnalyzeCalendarUseCase統合**: 両サービスの協調
+4. **既存TimeAnalyzer段階的廃止**: 新サービスへの完全移行確認
 
 **段階2: 必要性が明確になった時点でOrchestration導入**
 - 複数Use Case間の複雑な調整が実際に必要になった場合のみ実装
