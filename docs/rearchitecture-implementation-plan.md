@@ -841,7 +841,7 @@ lib/calendar_color_mcp/
 │   │   ├── check_auth_status_use_case.rb# 認証状態確認Use Case
 │   │   └── filter_events_by_color_use_case.rb # 色別フィルタリングUse Case
 │   └── services/
-│       └── calendar_orchestration_service.rb # 複数UseCase調整
+│       └── calendar_orchestration_service.rb # 複数UseCase調整（段階的実装）
 ├── interface_adapters/              # Interface Adapters層
 │   └── tools/
 │       ├── analyze_calendar_tool.rb # Controller化
@@ -959,6 +959,7 @@ end
 - ✅ **依存関係逆転原則遵守**: 層間エラー変換の適切な実装
 - ✅ **新機能追加容易化**: 拡張ポイントの明確化
 - ✅ **技術債務解決**: 全FIXME問題（errors.rb含む）の根本解決
+- ✅ **個別Use Case確立**: CalendarOrchestrationServiceは必要性が明確になった段階で段階的導入
 
 #### Phase 4完了時（統合効果）
 - ✅ **MCPツール薄層化**: Controller的役割への明確化
@@ -1003,6 +1004,24 @@ end
 3. **既存テスト維持**: 各Phase完了時に全テスト成功確認
 4. **段階的統合**: 各Phaseで動作確認
 5. **最終統合**: Phase 5で全体統合テスト
+
+### 🎯 CalendarOrchestrationServiceの段階的実装方針
+
+**段階1: 個別Use Caseの確立を最優先**
+```ruby
+# まず各Use Caseを独立して実装
+module Application
+  class AnalyzeCalendarUseCase; end
+  class AuthenticateUserUseCase; end
+  class CheckAuthStatusUseCase; end
+  class FilterEventsByColorUseCase; end
+end
+```
+
+**段階2: 必要性が明確になった時点でOrchestration導入**
+- 複数Use Case間の複雑な調整が実際に必要になった場合のみ実装
+- YAGNI原則（You Aren't Gonna Need It）に従い、過度な抽象化を避ける
+- 現在のシンプルなワークフローでは個別Use Caseで十分対応可能
 
 ### 🎯 成功基準
 

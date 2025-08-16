@@ -284,7 +284,7 @@ lib/calendar_color_mcp/
 │   │   ├── authenticate_user_use_case.rb # 認証UseCase
 │   │   └── filter_events_by_color_use_case.rb # 色別フィルタリングUseCase
 │   └── services/
-│       └── calendar_orchestration_service.rb # 複数UseCase調整
+│       └── calendar_orchestration_service.rb # 複数UseCase調整（段階的実装）
 ├── interface_adapters/              # Interface Adapters層
 │   └── tools/
 │       ├── analyze_calendar_tool.rb # MCPツール（Controller的役割）
@@ -721,7 +721,8 @@ end
 #### 中優先度（中長期的効果）  
 3. **Application層UseCase確立**（Phase 2）
    - ビジネスロジックのApplication層集約
-   - 複数Infrastructure層サービスの調整
+   - 個別Use Caseの確立を最優先
+   - **CalendarOrchestrationService**: 複数Use Case間の調整が必要になった段階で導入する段階的アプローチ
    - 新機能追加時の影響局所化
 
 4. **Interface Adapters層Controller化**（Phase 4）
@@ -734,6 +735,16 @@ end
    - ドメインエンティティでのビジネスルール保護
    - 値オブジェクトによる型安全性
    - 長期的なドメインモデル進化基盤
+
+### OrchestrationServiceの段階的実装方針
+
+**段階1: 個別Use Caseの確立**
+- まず各Use Case（analyze_calendar_use_case.rb、authenticate_user_use_case.rb等）を独立して実装
+- 各Use Caseが単独で動作することを確認
+
+**段階2: 必要に応じたOrchestration追加**
+- 複数Use Case間で複雑な調整が必要になった場合のみCalendarOrchestrationServiceを導入
+- YAGNI原則（You Aren't Gonna Need It）に従い、実際の必要性が明確になってから実装
 
 ---
 
