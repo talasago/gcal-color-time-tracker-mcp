@@ -45,7 +45,7 @@ module Infrastructure
     end
   end
 
-  class GoogleCalendarRepositoryDebugDecorator
+  class GoogleCalendarRepositoryLogDecorator
     include CalendarColorMCP::Loggable
     
     def initialize(repository)

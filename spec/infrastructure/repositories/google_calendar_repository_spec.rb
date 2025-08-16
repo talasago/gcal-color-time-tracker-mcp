@@ -86,7 +86,7 @@ describe Infrastructure::GoogleCalendarRepository do
   end
 end
 
-describe Infrastructure::GoogleCalendarRepositoryDebugDecorator do
+describe Infrastructure::GoogleCalendarRepositoryLogDecorator do
   let(:mock_repository) { instance_double(Infrastructure::GoogleCalendarRepository) }
   let(:start_date) { Date.new(2024, 1, 1) }
   let(:end_date) { Date.new(2024, 1, 31) }
@@ -110,7 +110,7 @@ describe Infrastructure::GoogleCalendarRepositoryDebugDecorator do
     )
   end
 
-  subject(:decorator) { Infrastructure::GoogleCalendarRepositoryDebugDecorator.new(mock_repository) }
+  subject(:decorator) { Infrastructure::GoogleCalendarRepositoryLogDecorator.new(mock_repository) }
 
   describe '#fetch_events' do
     before do

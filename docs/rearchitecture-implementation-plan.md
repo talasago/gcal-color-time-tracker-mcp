@@ -100,11 +100,11 @@ module Infrastructure
 end
 ```
 
-**3. DebugLoggerDecorator（ログ責任分離）**
+**3. GoogleCalendarRepositoryLogDecorator（ログ責任分離）**
 ```ruby
-# lib/calendar_color_mcp/infrastructure/decorators/debug_logger_decorator.rb
+# lib/calendar_color_mcp/infrastructure/repositories/google_calendar_repository.rb (同ファイル内)
 module Infrastructure
-  class DebugLoggerDecorator
+  class GoogleCalendarRepositoryLogDecorator
     def initialize(repository)
       @repository = repository
     end
@@ -262,7 +262,7 @@ module Application
       validate_date_range(start_date, end_date)
       
       # 3. イベント取得（デバッグログ付き）
-      debug_repository = Infrastructure::DebugLoggerDecorator.new(@calendar_repository)
+      debug_repository = Infrastructure::GoogleCalendarRepositoryLogDecorator.new(@calendar_repository)
       events = debug_repository.fetch_events(start_date, end_date)
       
       # 4. フィルタリング適用
@@ -322,7 +322,7 @@ module Application
       validate_date_range(start_date, end_date)
       
       # ビジネスロジック実行（デバッグログ付き）
-      debug_repository = Infrastructure::DebugLoggerDecorator.new(@calendar_repository)
+      debug_repository = Infrastructure::GoogleCalendarRepositoryLogDecorator.new(@calendar_repository)
       events = debug_repository.fetch_events(start_date, end_date)
       filtered_events = @filter_service.apply_filters(events, color_filters, user_email)
       @analyzer_service.analyze(filtered_events)
@@ -823,13 +823,11 @@ lib/calendar_color_mcp/
 ├── infrastructure/                  # Infrastructure層
 │   ├── repositories/
 │   │   ├── calendar_repository_interface.rb # Repository Interface
-│   │   ├── google_calendar_repository.rb   # Google Calendar API Repository
+│   │   ├── google_calendar_repository.rb   # Google Calendar API Repository (GoogleCalendarRepositoryLogDecoratorを含む)
 │   │   └── token_file_repository.rb        # Token File Repository
 │   ├── services/
 │   │   ├── configuration_service.rb        # 設定管理サービス
 │   │   └── event_filter_service.rb         # イベントフィルタリングサービス
-│   └── decorators/
-│       └── debug_logger_decorator.rb       # デバッグログDecorator
 ├── calendar_color_mcp.rb           # ルートファイル
 ├── color_constants.rb              # 既存維持
 ├── color_filter_manager.rb         # 既存維持
@@ -852,7 +850,7 @@ lib/calendar_color_mcp/
 ### 段階的移行戦略
 
 ```
-Phase 3: infrastructure/services/ + infrastructure/repositories/ + infrastructure/decorators/ 作成
+Phase 3: infrastructure/services/ + infrastructure/repositories/ 作成
 Phase 2: application/use_cases/ + application/services/ 作成  
 Phase 4: interface_adapters/tools/ リファクタリング
 Phase 1: domain/entities/ + domain/services/ 作成
@@ -904,7 +902,7 @@ end
 module Application
   class AnalyzeCalendarUseCase
     def execute(start_date:, end_date:, color_filters: nil, user_email:)
-      debug_repository = Infrastructure::DebugLoggerDecorator.new(@calendar_repository)
+      debug_repository = Infrastructure::GoogleCalendarRepositoryLogDecorator.new(@calendar_repository)
       events = debug_repository.fetch_events(start_date, end_date)      # API責任（デバッグログ付き）
       filtered_events = @filter_service.apply_filters(events, color_filters, user_email) # フィルタ責任
       @analyzer_service.analyze(filtered_events)           # 分析責任

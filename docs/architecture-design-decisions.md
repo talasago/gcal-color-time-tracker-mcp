@@ -299,8 +299,7 @@ lib/calendar_color_mcp/
     ├── services/
     │   ├── configuration_service.rb        # 設定管理サービス
     │   └── event_filter_service.rb         # イベントフィルタリング
-    └── decorators/
-        └── debug_logger_decorator.rb       # デバッグログ装飾
+    # デバッグログ装飾はgoogle_calendar_repository.rb内にGoogleCalendarRepositoryLogDecoratorとして統合
 
 # モジュール名前空間設計（簡潔化）
 # Domain::CalendarEvent (CalendarColorMCPプレフィックスなし)
@@ -543,9 +542,9 @@ module Infrastructure
   end
 end
 
-# lib/calendar_color_mcp/infrastructure/decorators/debug_logger_decorator.rb
+# lib/calendar_color_mcp/infrastructure/repositories/google_calendar_repository.rb (同ファイル内)
 module Infrastructure
-  class DebugLoggerDecorator
+  class GoogleCalendarRepositoryLogDecorator
     def initialize(repository)
       @repository = repository
     end
