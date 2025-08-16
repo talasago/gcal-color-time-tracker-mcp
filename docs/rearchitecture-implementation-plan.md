@@ -270,10 +270,12 @@ module Application
       
       # 5. 分析実行
       @analyzer_service.analyze(filtered_events)
-    rescue AuthenticationRequiredError => e
+    rescue Application::AuthenticationError => e
       handle_authentication_error(e)
-    rescue CalendarApiError => e
-      handle_api_error(e)
+    rescue Infrastructure::ExternalServiceError => e
+      raise Application::BusinessLogicError, "Calendar service unavailable: #{e.message}"
+    rescue Domain::BusinessRuleViolationError => e
+      raise Application::ValidationError, "Invalid calendar data: #{e.message}"
     end
   end
 end
@@ -300,44 +302,74 @@ end
 ```ruby
 # lib/calendar_color_mcp/application/errors.rb
 module Application
-  class UseCaseError < StandardError; end
-  class AuthenticationRequiredError < UseCaseError; end
-  class CalendarAccessError < UseCaseError; end
-  class InvalidParameterError < UseCaseError; end
+  # 基底エラー
+  class ApplicationError < StandardError; end
+  
+  # ビジネスロジック実行エラー（Use Case、ワークフロー関連）
+  class BusinessLogicError < ApplicationError; end
+  
+  # 認証・認可エラー（ユーザー認証、権限関連）
+  class AuthenticationError < ApplicationError; end
+  
+  # データ検証エラー（入力データ、ビジネスルール検証関連）
+  class ValidationError < ApplicationError; end
 end
 
 # lib/calendar_color_mcp/infrastructure/errors.rb
 module Infrastructure
-  class RepositoryError < StandardError; end
-  class ApiConnectionError < RepositoryError; end
-  class DataRetrievalError < RepositoryError; end
-  class ConfigurationError < RepositoryError; end
+  # 基底エラー
+  class InfrastructureError < StandardError; end
+  
+  # 外部サービス連携エラー（Google Calendar API等）
+  class ExternalServiceError < InfrastructureError; end
+  
+  # 設定・構成エラー（環境変数、設定ファイル等）  
+  class ConfigurationError < InfrastructureError; end
+  
+  # データ処理エラー（ファイルI/O、フィルタリング等）
+  class DataProcessingError < InfrastructureError; end
 end
 
 # lib/calendar_color_mcp/domain/errors.rb
 module Domain
+  # 基底エラー
   class DomainError < StandardError; end
-  class InvalidTimeSpanError < DomainError; end
-  class InvalidEventDataError < DomainError; end
+  
+  # ビジネスルール違反エラー（ドメインルール、制約違反関連）
+  class BusinessRuleViolationError < DomainError; end
+  
+  # データ整合性エラー（エンティティ、値オブジェクトの整合性関連）
+  class DataIntegrityError < DomainError; end
 end
 
 # lib/calendar_color_mcp/interface_adapters/errors.rb
 module InterfaceAdapters
-  class ToolError < StandardError; end
-  class ParameterValidationError < ToolError; end
-  class ResponseFormattingError < ToolError; end
+  # 基底エラー
+  class InterfaceAdapterError < StandardError; end
+  
+  # プロトコル変換エラー（MCP変換、パラメータ変換関連）
+  class ProtocolError < InterfaceAdapterError; end
+  
+  # レスポンス生成エラー（JSON生成、フォーマット関連）
+  class ResponseError < InterfaceAdapterError; end
 end
 ```
 
 **層間エラー変換例**:
 ```ruby
-# Infrastructure → Application
-rescue Infrastructure::ApiConnectionError => e
-  raise Application::CalendarAccessError, "Calendar service unavailable: #{e.message}"
+# Infrastructure → Application（外部サービスエラーをビジネスロジックエラーに変換）
+rescue Infrastructure::ExternalServiceError => e
+  raise Application::BusinessLogicError, "Calendar service unavailable: #{e.message}"
 
-# Application → Interface Adapters  
-rescue Application::AuthenticationRequiredError => e
+# Domain → Application（ドメインルール違反を検証エラーに変換）
+rescue Domain::BusinessRuleViolationError => e
+  raise Application::ValidationError, "Business rule violation: #{e.message}"
+
+# Application → Interface Adapters（アプリケーションエラーをプロトコルエラーに変換）
+rescue Application::AuthenticationError => e
   error_response(e.message, auth_url: get_auth_url)
+rescue Application::ValidationError => e
+  raise InterfaceAdapters::ProtocolError, "Invalid request: #{e.message}"
 ```
 
 ### 2.3 シンプルなキーワード引数アプローチ
@@ -360,7 +392,9 @@ module Application
     private
     
     def validate_date_range(start_date, end_date)
-      raise ArgumentError, "End date must be after start date" if end_date <= start_date
+      if end_date <= start_date
+        raise Application::ValidationError, "End date must be after start date"
+      end
     end
   end
 end
@@ -536,13 +570,15 @@ module InterfaceAdapters
       
       # 3. レスポンス変換
       success_response(result.to_hash)
-    rescue AuthenticationRequiredError => e
+    rescue Application::AuthenticationError => e
       auth_url = extract_auth_manager(context).get_auth_url
       error_response(e.message, auth_url: auth_url)
-    rescue InvalidParameterError => e
+    rescue Application::ValidationError => e
       error_response("Invalid parameters: #{e.message}")
-    rescue CalendarAccessError => e
+    rescue Application::BusinessLogicError => e
       error_response("Calendar access failed: #{e.message}")
+    rescue InterfaceAdapters::ProtocolError => e
+      error_response("Request format error: #{e.message}")
     end
   end
 end
@@ -609,7 +645,9 @@ module Domain
     
     def validate_time_range
       return unless @start_time && @end_time
-      raise ArgumentError, "End time must be after start time" if @end_time <= @start_time
+      if @end_time <= @start_time
+        raise Domain::BusinessRuleViolationError, "End time must be after start time"
+      end
     end
   end
 end
@@ -646,7 +684,9 @@ module Domain
     private
     
     def validate_date_range
-      raise ArgumentError, "End date must be after or equal to start date" if @end_date < @start_date
+      if @end_date < @start_date
+        raise Domain::DataIntegrityError, "End date must be after or equal to start date"
+      end
     end
   end
 end

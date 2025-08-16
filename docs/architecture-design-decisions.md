@@ -503,32 +503,56 @@ end
 ```ruby
 # lib/calendar_color_mcp/application/errors.rb (Application層)
 module Application
-  class UseCaseError < StandardError; end
-  class AuthenticationRequiredError < UseCaseError; end
-  class CalendarAccessError < UseCaseError; end
-  class InvalidParameterError < UseCaseError; end
+  # 基底エラー
+  class ApplicationError < StandardError; end
+  
+  # ビジネスロジック実行エラー（Use Case、ワークフロー関連）
+  class BusinessLogicError < ApplicationError; end
+  
+  # 認証・認可エラー（ユーザー認証、権限関連）
+  class AuthenticationError < ApplicationError; end
+  
+  # データ検証エラー（入力データ、ビジネスルール検証関連）
+  class ValidationError < ApplicationError; end
 end
 
 # lib/calendar_color_mcp/infrastructure/errors.rb (Infrastructure層)
 module Infrastructure
-  class RepositoryError < StandardError; end
-  class ApiConnectionError < RepositoryError; end
-  class DataRetrievalError < RepositoryError; end
-  class ConfigurationError < RepositoryError; end
+  # 基底エラー
+  class InfrastructureError < StandardError; end
+  
+  # 外部サービス連携エラー（Google Calendar API等）
+  class ExternalServiceError < InfrastructureError; end
+  
+  # 設定・構成エラー（環境変数、設定ファイル等）  
+  class ConfigurationError < InfrastructureError; end
+  
+  # データ処理エラー（ファイルI/O、フィルタリング等）
+  class DataProcessingError < InfrastructureError; end
 end
 
 # lib/calendar_color_mcp/domain/errors.rb (Domain層)
 module Domain
+  # 基底エラー
   class DomainError < StandardError; end
-  class InvalidTimeSpanError < DomainError; end
-  class InvalidEventDataError < DomainError; end
+  
+  # ビジネスルール違反エラー（ドメインルール、制約違反関連）
+  class BusinessRuleViolationError < DomainError; end
+  
+  # データ整合性エラー（エンティティ、値オブジェクトの整合性関連）
+  class DataIntegrityError < DomainError; end
 end
 
 # lib/calendar_color_mcp/interface_adapters/errors.rb (Interface Adapters層)
 module InterfaceAdapters
-  class ToolError < StandardError; end
-  class ParameterValidationError < ToolError; end
-  class ResponseFormattingError < ToolError; end
+  # 基底エラー
+  class InterfaceAdapterError < StandardError; end
+  
+  # プロトコル変換エラー（MCP変換、パラメータ変換関連）
+  class ProtocolError < InterfaceAdapterError; end
+  
+  # レスポンス生成エラー（JSON生成、フォーマット関連）
+  class ResponseError < InterfaceAdapterError; end
 end
 ```
 
@@ -653,10 +677,12 @@ module InterfaceAdapters
       
       # 4. レスポンスの変換（Interface Adapters層の責任）
       success_response(format_response(result))
-    rescue Application::AuthenticationRequiredError => e
+    rescue Application::AuthenticationError => e
       handle_authentication_error(e)
-    rescue Application::InvalidParameterError => e
+    rescue Application::ValidationError => e
       handle_parameter_error(e)
+    rescue Application::BusinessLogicError => e
+      handle_business_logic_error(e)
     end
     
     private
