@@ -294,21 +294,50 @@ rescue => e
 end
 ```
 
-#### ✅ 解決策: 統一例外階層
+#### ✅ 解決策: 層別エラー定義と変換
+
+**各層での適切なエラー定義**:
 ```ruby
-# lib/calendar_color_mcp/errors.rb (拡張)
-module CalendarColorMCP
-  # Use Case層の例外
+# lib/calendar_color_mcp/application/errors.rb
+module Application
   class UseCaseError < StandardError; end
   class AuthenticationRequiredError < UseCaseError; end
   class CalendarAccessError < UseCaseError; end
   class InvalidParameterError < UseCaseError; end
-  
-  # Repository層の例外  
+end
+
+# lib/calendar_color_mcp/infrastructure/errors.rb
+module Infrastructure
   class RepositoryError < StandardError; end
   class ApiConnectionError < RepositoryError; end
   class DataRetrievalError < RepositoryError; end
+  class ConfigurationError < RepositoryError; end
 end
+
+# lib/calendar_color_mcp/domain/errors.rb
+module Domain
+  class DomainError < StandardError; end
+  class InvalidTimeSpanError < DomainError; end
+  class InvalidEventDataError < DomainError; end
+end
+
+# lib/calendar_color_mcp/interface_adapters/errors.rb
+module InterfaceAdapters
+  class ToolError < StandardError; end
+  class ParameterValidationError < ToolError; end
+  class ResponseFormattingError < ToolError; end
+end
+```
+
+**層間エラー変換例**:
+```ruby
+# Infrastructure → Application
+rescue Infrastructure::ApiConnectionError => e
+  raise Application::CalendarAccessError, "Calendar service unavailable: #{e.message}"
+
+# Application → Interface Adapters  
+rescue Application::AuthenticationRequiredError => e
+  error_response(e.message, auth_url: get_auth_url)
 ```
 
 ### 2.3 シンプルなキーワード引数アプローチ
@@ -869,6 +898,7 @@ Phase 5: 統合テスト・既存ファイル最適化
 | **google_calendar_client.rb:21** | ビジネスロジック混在 | Repository+UseCase+Service分離 | Phase 3 |
 | **google_calendar_client.rb:88** | 例外の握りつぶし | 適切な例外処理とログ記録実装 | Phase 2 |
 | **base_tool.rb:27** | ビルダーパターンの必要性 | 標準エラーレスポンス採用で簡素化 | Phase 4 |
+| **errors.rb** | 層の責任混在、依存関係逆転原則違反 | 各層への適切なエラー分散配置 | Phase 2.5 |
 
 ### 解決後の状態
 
@@ -925,9 +955,10 @@ end
 
 #### Phase 2完了時（中期的効果）
 - ✅ **ビジネスロジック明確化**: Use Caseでのロジック集約
-- ✅ **エラーハンドリング統一**: 例外階層による一貫性
+- ✅ **エラーハンドリング統一**: 層別エラー定義による一貫性
+- ✅ **依存関係逆転原則遵守**: 層間エラー変換の適切な実装
 - ✅ **新機能追加容易化**: 拡張ポイントの明確化
-- ✅ **技術債務解決**: 全FIXME問題の根本解決
+- ✅ **技術債務解決**: 全FIXME問題（errors.rb含む）の根本解決
 
 #### Phase 4完了時（統合効果）
 - ✅ **MCPツール薄層化**: Controller的役割への明確化
@@ -950,7 +981,7 @@ end
 |------|--------|-------|--------|
 | **最大メソッド行数** | 60行 | 15行以下 | 75%削減 |
 | **重複コード箇所** | 2箇所 | 0箇所 | 100%削減 |
-| **FIXME数** | 4個 | 0個 | 100%解決 |
+| **FIXME数** | 5個 | 0個 | 100%解決 |
 | **テスト実行時間** | 測定 | 測定予定 | 改善予定 |
 | **クラス責任数** | 4個/クラス | 1個/クラス | 単一責任達成 |
 

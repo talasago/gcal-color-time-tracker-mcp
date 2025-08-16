@@ -494,14 +494,48 @@ module Application
 end
 ```
 
-#### 2.2 エラーハンドリング標準化
+#### 2.2 エラーハンドリング標準化と層別責任分離
+
+**現在の問題**: 全エラーが単一ファイルに集約され、依存関係逆転原則に違反
+
+**解決策**: 各層での適切なエラー定義と層間変換
+
 ```ruby
-module CalendarColorMCP
+# lib/calendar_color_mcp/application/errors.rb (Application層)
+module Application
   class UseCaseError < StandardError; end
   class AuthenticationRequiredError < UseCaseError; end
   class CalendarAccessError < UseCaseError; end
+  class InvalidParameterError < UseCaseError; end
+end
+
+# lib/calendar_color_mcp/infrastructure/errors.rb (Infrastructure層)
+module Infrastructure
+  class RepositoryError < StandardError; end
+  class ApiConnectionError < RepositoryError; end
+  class DataRetrievalError < RepositoryError; end
+  class ConfigurationError < RepositoryError; end
+end
+
+# lib/calendar_color_mcp/domain/errors.rb (Domain層)
+module Domain
+  class DomainError < StandardError; end
+  class InvalidTimeSpanError < DomainError; end
+  class InvalidEventDataError < DomainError; end
+end
+
+# lib/calendar_color_mcp/interface_adapters/errors.rb (Interface Adapters層)
+module InterfaceAdapters
+  class ToolError < StandardError; end
+  class ParameterValidationError < ToolError; end
+  class ResponseFormattingError < ToolError; end
 end
 ```
+
+**エラー変換の原則**:
+- Infrastructure層エラー → Application層エラーに変換
+- Application層エラー → Interface Adapters層でMCPレスポンスに変換
+- 各層は自分より内側の層のエラーのみを知る（依存関係逆転原則）
 
 ### Phase 3: Infrastructure層の再構築（2-3日）
 
