@@ -91,6 +91,8 @@ bundle exec rspec spec/[test_file].rb       # 単一テストファイルを実�
   - テスト内でif文を使用しない（代わりに`context`を使用して条件分岐を表現する） 
     - if文による分岐はテストの理解と保守を困難にするため
   - 同じインデントで`context`が5つ以上存在する場合、`rspec-parameterized `を使用してパラメータ駆動テストとする
+  - 1つの`describe`に複数の前回条件がある場合は、`context`を使用して分ける。
+    - 一方で、1つの`describe`に1つの`context`は冗長化するため不要
 - `let`の遅延評価を使うことで、適切にコード量を減らす
 - `subject`を使用して、わかりやすくSUT（System Under Test）を表す
   - `subject`はAAAパターンの`Act`部分に相当できる
