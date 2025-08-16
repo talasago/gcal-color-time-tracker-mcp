@@ -1,15 +1,15 @@
 require 'spec_helper'
-require_relative '../support/mcp_request_helpers'
-require_relative '../support/mcp_shared_examples'
+require_relative '../../support/mcp_request_helpers'
+require_relative '../../support/mcp_shared_examples'
 require 'uri'
 require 'cgi'
-require_relative '../../lib/calendar_color_mcp/tools/start_auth_tool'
+require_relative '../../../lib/calendar_color_mcp/interface_adapters/tools/start_auth_tool'
 
 RSpec.describe 'StartAuthTool', type: :request do
   include MCPRequestHelpers
   include MCPSharedHelpers
 
-  include_examples 'BaseTool inheritance', CalendarColorMCP::StartAuthTool
+  include_examples 'BaseTool inheritance', InterfaceAdapters::StartAuthTool
 
   describe 'successful authentication start' do
     context 'when called with valid parameters' do

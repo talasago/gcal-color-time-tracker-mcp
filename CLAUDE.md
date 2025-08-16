@@ -9,7 +9,7 @@ DEBUG=true ./bin/calendar-color-mcp  # デバッグログ付きで開始
 ```bash
 bundle exec rspec                           # 全テストを実行
 bundle exec rspec spec/mcp_standard_spec.rb # MCPプロトコルテストを実行
-bundle exec rspec spec/tool/                # 個別ツールテストを実行
+bundle exec rspec spec/interface_adapters/tool/ # 個別ツールテストを実行
 bundle exec rspec spec/integration/         # 統合テストを実行
 bundle exec rspec spec/[test_file].rb       # 単一テストファイルを実行
 ```
@@ -119,13 +119,13 @@ bundle exec rspec spec/[test_file].rb       # 単一テストファイルを実�
 ```
 spec/
 ├── mcp_standard_spec.rb           # MCPプロトコル標準準拠しているテスト
-├── tool/                          # 個別ツールの機能テスト
+├── interface_adapters/tool/       # 個別ツールの機能テスト
 ├── integration/                   # 複数MCPツール間のエンドツーエンドフローテスト
 ```
 
 ### テストカテゴリ
 
-#### ツール個別テスト（`spec/tool/`）
+#### ツール個別テスト（`spec/interface_adapters/tool/`）
 **目的**: 各MCPツールの機能を独立してテスト
 - **パラメータ検証**: 必須/オプションパラメータ、型チェック
 - **レスポンスフォーマット**: 一貫したJSON構造、エラーハンドリング

@@ -1,14 +1,14 @@
 require 'spec_helper'
-require_relative '../support/mcp_request_helpers'
-require_relative '../support/mcp_shared_examples'
-require_relative '../support/mcp_shared_contexts'
-require_relative '../../lib/calendar_color_mcp/tools/complete_auth_tool'
+require_relative '../../support/mcp_request_helpers'
+require_relative '../../support/mcp_shared_examples'
+require_relative '../../support/mcp_shared_contexts'
+require_relative '../../../lib/calendar_color_mcp/interface_adapters/tools/complete_auth_tool'
 
 RSpec.describe 'CompleteAuthTool', type: :request do
   include MCPRequestHelpers
   include MCPSharedHelpers
 
-  include_examples 'BaseTool inheritance', CalendarColorMCP::CompleteAuthTool, {
+  include_examples 'BaseTool inheritance', InterfaceAdapters::CompleteAuthTool, {
     auth_code: "test_code"
   }
 
@@ -26,7 +26,7 @@ RSpec.describe 'CompleteAuthTool', type: :request do
       it 'handles valid auth code' do
 
         # Call tool directly with mocked context
-        response = CalendarColorMCP::CompleteAuthTool.call(
+        response = InterfaceAdapters::CompleteAuthTool.call(
           auth_code: "valid_test_code",
           server_context: server_context
         )

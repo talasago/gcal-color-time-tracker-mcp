@@ -1,0 +1,62 @@
+require 'mcp'
+require_relative '../../loggable'
+require_relative '../../logger_manager'
+
+module InterfaceAdapters
+  class BaseTool < MCP::Tool
+    include CalendarColorMCP::Loggable
+    
+    class << self
+      protected
+      
+      def logger
+        @logger ||= CalendarColorMCP::LoggerManager.instance
+      end
+
+      def extract_auth_manager(context)
+        server_context = context[:server_context]
+        auth_manager = server_context&.dig(:auth_manager)
+
+        if auth_manager.nil?
+          raise ArgumentError, "認証マネージャーが利用できません"
+        end
+
+        auth_manager
+      end
+
+      def extract_token_manager(context)
+        server_context = context[:server_context]
+        token_manager = server_context&.dig(:token_manager)
+
+        if token_manager.nil?
+          raise ArgumentError, "トークンマネージャーが利用できません"
+        end
+
+        token_manager
+      end
+
+      def success_response(data)
+        response_data = {
+          success: true
+        }.merge(data)
+
+        MCP::Tool::Response.new([{
+          type: "text",
+          text: response_data.to_json
+        }])
+      end
+
+      def error_response(message, **additional_data)
+        response_data = {
+          success: false,
+          error: message
+        }.merge(additional_data)
+
+        MCP::Tool::Response.new([{
+          type: "text",
+          text: response_data.to_json
+        }])
+      end
+    end
+  end
+end

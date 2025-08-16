@@ -1,5 +1,13 @@
 module Domain
   class EventFilterService
+    def apply_filters(events, color_filters, user_email)
+      # まず参加済みイベントのみにフィルタリング
+      filtered_events = filter_attended_events(events, user_email)
+      
+      # 色フィルタリングは後で実装予定（現在は全て通す）
+      filtered_events
+    end
+    
     def filter_attended_events(events, user_email)
       events.select { |event| attended_event?(event, user_email) }
     end

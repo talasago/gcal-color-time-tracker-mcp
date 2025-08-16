@@ -1,14 +1,14 @@
 require 'spec_helper'
-require_relative '../support/mcp_request_helpers'
-require_relative '../support/mcp_shared_examples'
-require_relative '../support/mcp_shared_contexts'
-require_relative '../../lib/calendar_color_mcp/tools/check_auth_status_tool'
+require_relative '../../support/mcp_request_helpers'
+require_relative '../../support/mcp_shared_examples'
+require_relative '../../support/mcp_shared_contexts'
+require_relative '../../../lib/calendar_color_mcp/interface_adapters/tools/check_auth_status_tool'
 
 RSpec.describe 'CheckAuthStatusTool', type: :request do
   include MCPRequestHelpers
   include MCPSharedHelpers
 
-  include_examples 'BaseTool inheritance', CalendarColorMCP::CheckAuthStatusTool
+  include_examples 'BaseTool inheritance', InterfaceAdapters::CheckAuthStatusTool
 
   describe 'check_auth_status_tool execution' do
     let(:init_req) { initialize_request(0) }
@@ -50,7 +50,7 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
       include_context 'authenticated user'
 
       it 'should provide authenticated user information' do
-        response = CalendarColorMCP::CheckAuthStatusTool.call(server_context: server_context)
+        response = InterfaceAdapters::CheckAuthStatusTool.call(server_context: server_context)
         content = JSON.parse(response.content[0][:text])
 
         aggregate_failures do
@@ -66,7 +66,7 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
       include_context 'unauthenticated user'
 
       it 'should provide authentication required message' do
-        response = CalendarColorMCP::CheckAuthStatusTool.call(server_context: server_context)
+        response = InterfaceAdapters::CheckAuthStatusTool.call(server_context: server_context)
         content = JSON.parse(response.content[0][:text])
 
         aggregate_failures do
