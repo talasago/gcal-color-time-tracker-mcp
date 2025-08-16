@@ -261,8 +261,9 @@ module Application
       # 2. バリデーション
       validate_date_range(start_date, end_date)
       
-      # 3. イベント取得
-      events = @calendar_repository.fetch_events(start_date, end_date)
+      # 3. イベント取得（デバッグログ付き）
+      debug_repository = Infrastructure::DebugLoggerDecorator.new(@calendar_repository)
+      events = debug_repository.fetch_events(start_date, end_date)
       
       # 4. フィルタリング適用
       filtered_events = @filter_service.apply_filters(events, color_filters, user_email)
@@ -320,8 +321,9 @@ module Application
       # バリデーションはUse Case内で実行
       validate_date_range(start_date, end_date)
       
-      # ビジネスロジック実行
-      events = @calendar_repository.fetch_events(start_date, end_date)
+      # ビジネスロジック実行（デバッグログ付き）
+      debug_repository = Infrastructure::DebugLoggerDecorator.new(@calendar_repository)
+      events = debug_repository.fetch_events(start_date, end_date)
       filtered_events = @filter_service.apply_filters(events, color_filters, user_email)
       @analyzer_service.analyze(filtered_events)
     end
@@ -902,7 +904,8 @@ end
 module Application
   class AnalyzeCalendarUseCase
     def execute(start_date:, end_date:, color_filters: nil, user_email:)
-      events = @calendar_repository.fetch_events(start_date, end_date)      # API責任
+      debug_repository = Infrastructure::DebugLoggerDecorator.new(@calendar_repository)
+      events = debug_repository.fetch_events(start_date, end_date)      # API責任（デバッグログ付き）
       filtered_events = @filter_service.apply_filters(events, color_filters, user_email) # フィルタ責任
       @analyzer_service.analyze(filtered_events)           # 分析責任
     end
