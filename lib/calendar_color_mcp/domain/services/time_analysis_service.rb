@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../../color_constants'
+require_relative '../entities/color_constants'
 require_relative '../../loggable'
 
 

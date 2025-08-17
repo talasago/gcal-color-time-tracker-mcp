@@ -1,5 +1,4 @@
 require_relative '../errors'
-require_relative '../../errors'
 require_relative '../../token_manager'
 require_relative '../../google_calendar_auth_manager'
 

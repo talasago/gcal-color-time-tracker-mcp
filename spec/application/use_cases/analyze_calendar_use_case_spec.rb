@@ -3,16 +3,12 @@ require_relative '../../../lib/calendar_color_mcp/application/use_cases/analyze_
 
 RSpec.describe Application::AnalyzeCalendarUseCase do
   let(:mock_calendar_repository) { instance_double('GoogleCalendarRepository') }
-  let(:mock_filter_service) { instance_double('EventFilterService') }
-  let(:mock_analyzer_service) { instance_double('TimeAnalyzer') }
   let(:mock_token_manager) { CalendarColorMCP::TokenManager.instance }
   let(:mock_auth_manager) { CalendarColorMCP::GoogleCalendarAuthManager.instance }
 
   subject(:use_case) do
     Application::AnalyzeCalendarUseCase.new(
       calendar_repository: mock_calendar_repository,
-      filter_service: mock_filter_service,
-      analyzer_service: mock_analyzer_service,
       token_manager: mock_token_manager,
       auth_manager: mock_auth_manager
     )
@@ -21,8 +17,18 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
   let(:start_date) { Date.parse('2024-01-01') }
   let(:end_date) { Date.parse('2024-01-31') }
   let(:user_email) { 'test@example.com' }
-  let(:mock_event) { double('event', summary: 'Test Event') }
-  let(:mock_analysis_result) { { color_breakdown: {}, summary: { total_hours: 10 } } }
+  let(:mock_event) do
+    double('event',
+      summary: 'Test Event',
+      color_id: '2',
+      start: double('start', date_time: Time.parse('2024-01-01 10:00:00'), date: nil),
+      end: double('end', date_time: Time.parse('2024-01-01 11:00:00'), date: nil),
+      attendees: nil,
+      organizer: double('organizer', self: true)
+    ).tap do |event|
+      allow(event).to receive(:attended_by?).with(user_email).and_return(true)
+    end
+  end
 
   describe '#initialize' do
     it 'should initialize with dependencies' do
@@ -36,8 +42,6 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
         allow(mock_token_manager).to receive(:token_exist?).and_return(true)
         allow(mock_calendar_repository).to receive(:fetch_events).and_return([mock_event])
         allow(mock_calendar_repository).to receive(:get_user_email).and_return(user_email)
-        allow(mock_filter_service).to receive(:apply_filters).and_return([mock_event])
-        allow(mock_analyzer_service).to receive(:analyze).and_return(mock_analysis_result)
       end
 
       it 'should analyze calendar events successfully' do
@@ -46,7 +50,9 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
           end_date: end_date,
         )
 
-        expect(result).to eq(mock_analysis_result)
+        expect(result).to be_a(Hash)
+        expect(result).to have_key(:color_breakdown)
+        expect(result).to have_key(:summary)
         expect(mock_calendar_repository).to have_received(:fetch_events).with(
           start_date,
           end_date

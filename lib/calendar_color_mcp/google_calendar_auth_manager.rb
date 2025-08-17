@@ -8,6 +8,7 @@ require_relative 'token_manager'
 require_relative 'loggable'
 
 module CalendarColorMCP
+  # TODO:このクラスの責務が曖昧だと思う
   class GoogleCalendarAuthManager
     include Singleton
     include Loggable
@@ -28,6 +29,7 @@ module CalendarColorMCP
       @token_manager = TokenManager.instance
     end
 
+    # TODO:環境変数のチェックはinfra層のやつ使えば良さそう
     def get_auth_url
       # 必要な環境変数のチェック
       if ENV['GOOGLE_CLIENT_ID'].nil? || ENV['GOOGLE_CLIENT_ID'].empty?

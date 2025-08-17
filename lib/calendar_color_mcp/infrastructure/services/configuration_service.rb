@@ -41,7 +41,12 @@ module Infrastructure
     end
     
     def build_error_message(missing_vars)
-      "Missing required environment variables: #{missing_vars.join(', ')}. Please check your .env file."
+      error_msg = "必要な環境変数が設定されていません: #{missing_vars.join(', ')}\n"
+      error_msg += ".env ファイルを確認し、以下の設定を行ってください:\n"
+      missing_vars.each do |var|
+        error_msg += "#{var}=your_#{var.downcase}\n"
+      end
+      error_msg
     end
   end
 end

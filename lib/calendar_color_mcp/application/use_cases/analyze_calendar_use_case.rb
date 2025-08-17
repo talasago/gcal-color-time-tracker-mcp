@@ -1,20 +1,19 @@
 require_relative '../errors'
-require_relative '../../errors'
 require_relative '../../token_manager'
 require_relative '../../google_calendar_auth_manager'
+require_relative '../../domain/services/event_filter_service'
+require_relative '../../domain/services/time_analysis_service'
 
 module Application
   class AnalyzeCalendarUseCase
     def initialize(
       calendar_repository: nil,
-      filter_service: nil,
-      analyzer_service: nil,
       token_manager: CalendarColorMCP::TokenManager.instance,
       auth_manager: CalendarColorMCP::GoogleCalendarAuthManager.instance
     )
       @calendar_repository = calendar_repository
-      @filter_service = filter_service
-      @analyzer_service = analyzer_service
+      @filter_service = Domain::EventFilterService.new
+      @analyzer_service = Domain::TimeAnalysisService.new
       @token_manager = token_manager
       @auth_manager = auth_manager
     end
@@ -24,8 +23,7 @@ module Application
       ensure_authenticated
       events = @calendar_repository.fetch_events(parsed_start_date, parsed_end_date)
       filtered_events = @filter_service.apply_filters(events, color_filters, get_user_email)
-      # TODO: ドメインロジック使るときにまた見直す
-      @analyzer_service.analyze(filtered_events, parsed_start_date, parsed_end_date)
+      @analyzer_service.analyze(filtered_events)
     rescue Application::AuthenticationRequiredError => e
       raise Application::AuthenticationRequiredError, e.message
     end

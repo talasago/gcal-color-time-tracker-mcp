@@ -192,10 +192,6 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
     include_context 'calendar analysis setup'
 
     before do
-      # Override mock_filter to return has_filters: true for these tests
-      mock_filter = instance_double('ColorFilterManager')
-      allow(CalendarColorMCP::ColorFilterManager).to receive(:new).and_return(mock_filter)
-      allow(mock_filter).to receive(:get_filtering_summary).and_return({ has_filters: true })
     end
 
     describe 'valid color specifications' do

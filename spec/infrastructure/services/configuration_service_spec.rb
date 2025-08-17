@@ -33,10 +33,10 @@ describe Infrastructure::ConfigurationService do
     context 'when environment variables are missing' do
       where(:client_id, :client_secret, :expected_error) do
         [
-          [nil, 'test_client_secret', /Missing required environment variables: GOOGLE_CLIENT_ID/],
-          ['test_client_id', nil, /Missing required environment variables: GOOGLE_CLIENT_SECRET/],
-          [nil, nil, /Missing required environment variables: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET/],
-          ['', '', /Missing required environment variables: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET/]
+          [nil, 'test_client_secret', /必要な環境変数が設定されていません: GOOGLE_CLIENT_ID/],
+          ['test_client_id', nil, /必要な環境変数が設定されていません: GOOGLE_CLIENT_SECRET/],
+          [nil, nil, /必要な環境変数が設定されていません: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET/],
+          ['', '', /必要な環境変数が設定されていません: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET/]
         ]
       end
 

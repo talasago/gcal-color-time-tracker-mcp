@@ -1,5 +1,4 @@
 require 'google/apis/calendar_v3'
-require_relative '../../errors'
 require_relative '../errors'
 require_relative '../../application/errors'
 require_relative '../../loggable'
@@ -25,6 +24,7 @@ module Infrastructure
         order_by: 'startTime'
       )
 
+      # TODO:ここでdomainのオブジェクトに変換しなくていいのか？
       response.items
     rescue Google::Apis::AuthorizationError => e
       raise Application::AuthenticationRequiredError, "認証エラー: #{e.message}"

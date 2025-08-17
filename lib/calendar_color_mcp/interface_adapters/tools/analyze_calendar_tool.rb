@@ -1,8 +1,7 @@
 require 'mcp'
 require_relative 'base_tool'
 require_relative '../../application/use_cases/analyze_calendar_use_case'
-require_relative '../../color_constants'
-require_relative '../../color_filter_manager'
+require_relative '../../domain/entities/color_constants'
 require_relative '../errors'
 
 module InterfaceAdapters
@@ -26,7 +25,7 @@ module InterfaceAdapters
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
-              { type: "string", enum: CalendarColorMCP::ColorConstants.color_names_array }
+              { type: "string", enum: Domain::ColorConstants.color_names_array }
             ]
           }
         },
@@ -36,7 +35,7 @@ module InterfaceAdapters
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
-              { type: "string", enum: CalendarColorMCP::ColorConstants.color_names_array }
+              { type: "string", enum: Domain::ColorConstants.color_names_array }
             ]
           }
         }
@@ -57,9 +56,6 @@ module InterfaceAdapters
 
           use_case = Application::AnalyzeCalendarUseCase.new(
             calendar_repository: extract_calendar_repository(context),
-            filter_service: extract_filter_service(context),
-            # TODO:これはここでいらないかも。ユースケース層で知ってれば良さそう。
-            analyzer_service: extract_analyzer_service(context),
             token_manager: extract_token_manager(context),
             auth_manager: extract_auth_manager(context)
           )
@@ -70,22 +66,16 @@ module InterfaceAdapters
             color_filters: color_filters,
           )
 
-          # TODO:これ必要なのだろうか？filterはuse caseの中でやるはず
-          color_filter = CalendarColorMCP::ColorFilterManager.new(
-            include_colors: include_colors,
-            exclude_colors: exclude_colors
-          )
-
           success_response({
             period: {
               start_date: parsed_start_date.to_s,
               end_date: parsed_end_date.to_s,
               days: (parsed_end_date - parsed_start_date).to_i + 1
             },
-            color_filter: color_filter.get_filtering_summary,
+            color_filter: build_filter_summary(include_colors, exclude_colors),
             analysis: result[:color_breakdown],
             summary: result[:summary],
-            formatted_output: format_analysis_output(result, color_filter)
+            formatted_output: format_analysis_output(result, include_colors, exclude_colors)
           })
 
         rescue Application::AuthenticationRequiredError => e
@@ -126,34 +116,28 @@ module InterfaceAdapters
       def extract_calendar_repository(context)
         server_context = context[:server_context]
         calendar_repository = server_context&.dig(:calendar_repository)
-        
+
         calendar_repository || raise(InterfaceAdapters::DependencyInjectionError, "calendar_repository not found in server_context")
       end
 
-      def extract_filter_service(context)
-        server_context = context[:server_context]
-        filter_service = server_context&.dig(:filter_service)
-        
-        filter_service || raise(InterfaceAdapters::DependencyInjectionError, "filter_service not found in server_context")
+
+      def build_filter_summary(include_colors, exclude_colors)
+        {
+          has_filters: !!(include_colors || exclude_colors),
+          include_colors: include_colors,
+          exclude_colors: exclude_colors
+        }
       end
 
-      def extract_analyzer_service(context)
-        server_context = context[:server_context]
-        analyzer_service = server_context&.dig(:analyzer_service)
-        
-        analyzer_service || raise(InterfaceAdapters::DependencyInjectionError, "analyzer_service not found in server_context")
-      end
-
-      # TODO:これここなのか気になる。デコレータとか？
-      def format_analysis_output(result, color_filter = nil)
+      # TODO:これここでいいのか気になる。デコレータとか？
+      def format_analysis_output(result, include_colors = nil, exclude_colors = nil)
         output = ["📊 色別時間集計結果:", "=" * 50, ""]
 
         # 色フィルタリング情報の表示
-        if color_filter&.get_filtering_summary[:has_filters]
-          filter_summary = color_filter.get_filtering_summary
+        if include_colors || exclude_colors
           output << "🎨 色フィルタリング設定:"
-          output << "  含める色: #{filter_summary[:include_colors] || '全色'}"
-          output << "  除外する色: #{filter_summary[:exclude_colors] || 'なし'}"
+          output << "  含める色: #{include_colors&.join(', ') || '全色'}"
+          output << "  除外する色: #{exclude_colors&.join(', ') || 'なし'}"
           output << ""
         end
 
