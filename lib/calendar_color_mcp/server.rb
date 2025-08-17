@@ -66,8 +66,5 @@ module CalendarColorMCP
       logger.error "Backtrace: #{e.backtrace&.first(5)&.join(', ')}"
       raise "Failed to start MCP server: #{e.message}"
     end
-
-    private
-
   end
 end
