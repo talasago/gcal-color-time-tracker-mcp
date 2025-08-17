@@ -3,6 +3,7 @@ require 'fileutils'
 require 'googleauth'
 require 'singleton'
 require_relative 'loggable'
+require_relative 'infrastructure/services/configuration_service'
 
 module CalendarColorMCP
   class TokenManager
@@ -69,9 +70,10 @@ module CalendarColorMCP
         raise "Failed to access token file: #{e.message}"
       end
 
+      config = Infrastructure::ConfigurationService.instance
       credentials = Google::Auth::UserRefreshCredentials.new(
-        client_id: ENV['GOOGLE_CLIENT_ID'],
-        client_secret: ENV['GOOGLE_CLIENT_SECRET'],
+        client_id: config.google_client_id,
+        client_secret: config.google_client_secret,
         refresh_token: token_data['refresh_token'],
         access_token: token_data['access_token']
       )
