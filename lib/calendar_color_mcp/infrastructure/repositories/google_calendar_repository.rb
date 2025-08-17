@@ -1,15 +1,19 @@
 require 'google/apis/calendar_v3'
 require_relative '../../errors'
 require_relative '../errors'
+require_relative '../../application/errors'
 require_relative '../../loggable'
+require_relative '../../token_manager'
 
 module Infrastructure
   class GoogleCalendarRepository
     def initialize
       @service = Google::Apis::CalendarV3::CalendarService.new
+      @token_manager = CalendarColorMCP::TokenManager.instance
     end
 
     def fetch_events(start_date, end_date)
+      authorize
       start_time = Time.new(start_date.year, start_date.month, start_date.day, 0, 0, 0)
       end_time = Time.new(end_date.year, end_date.month, end_date.day, 23, 59, 59)
 
@@ -22,6 +26,8 @@ module Infrastructure
       )
 
       response.items
+    rescue Google::Apis::AuthorizationError => e
+      raise Application::AuthenticationRequiredError, "認証エラー: #{e.message}"
     rescue Google::Apis::ClientError, Google::Apis::ServerError => e
       raise Infrastructure::ExternalServiceError, "カレンダーAPIエラー: #{e.message}"
     rescue => e
@@ -34,6 +40,8 @@ module Infrastructure
     def get_user_email
       calendar_info = @service.get_calendar('primary')
       calendar_info.id
+    rescue Google::Apis::AuthorizationError => e
+      raise Application::AuthenticationRequiredError, "認証エラー: #{e.message}"
     rescue Google::Apis::ClientError, Google::Apis::ServerError => e
       raise Infrastructure::ExternalServiceError, "ユーザー情報の取得に失敗しました: #{e.message}"
     rescue => e
@@ -41,46 +49,78 @@ module Infrastructure
     end
 
     # TODO: そもそもpublicメソッド？？にする必要があるのか？
-    def authorize(credentials)
+    def authorize
+      credentials = load_credentials
+      set_authorization(credentials)
+    end
+
+    private
+
+    def load_credentials
+      begin
+        credentials = @token_manager.load_credentials
+      rescue => e
+        raise Infrastructure::ExternalServiceError, "認証情報の検証に失敗しました: #{e.message}"
+      end
+      raise Application::AuthenticationRequiredError, "認証情報が見つかりません" unless credentials
+
+      refresh_if_expired(credentials)
+      credentials
+    end
+
+    def refresh_if_expired(credentials)
+      return unless credentials.expired?
+
+      credentials.refresh!
+      @token_manager.save_credentials(credentials)
+    rescue Google::Apis::AuthorizationError => e
+      raise Application::AuthenticationRequiredError, "トークンのリフレッシュに失敗しました: #{e.message}"
+    rescue => e
+      raise Infrastructure::ExternalServiceError, "認証情報の保存に失敗しました: #{e.message}"
+    end
+
+    def set_authorization(credentials)
       @service.authorization = credentials
+    rescue => e
+      raise Infrastructure::ExternalServiceError, "認証設定に失敗しました: #{e.message}"
     end
   end
 
   class GoogleCalendarRepositoryLogDecorator
     include CalendarColorMCP::Loggable
-    
+
     def initialize(repository)
       @repository = repository
     end
-    
+
     def fetch_events(start_date, end_date)
       events = @repository.fetch_events(start_date, end_date)
       log_debug_info(events, start_date, end_date)
       events
     end
-    
+
     def get_user_email
       user_email = @repository.get_user_email
       logger.debug "Retrieved user email: #{user_email}"
       user_email
     end
-    
-    def authorize(credentials)
+
+    def authorize
       logger.debug "Authorizing repository with credentials"
-      @repository.authorize(credentials)
+      @repository.authorize
     end
-    
+
     private
-    
+
     def log_debug_info(events, start_date, end_date)
       logger.debug "=== Google Calendar API Response Debug ==="
       logger.debug "Period: #{start_date} ~ #{end_date}"
       logger.debug "Total events: #{events.length}"
-      
+
       log_events_details(events)
       logger.debug "=" * 50
     end
-    
+
     def log_events_details(events)
       events.each_with_index do |event, index|
         logger.debug "--- Event #{index + 1} ---"
@@ -89,7 +129,7 @@ module Infrastructure
         log_event_times(event)
       end
     end
-    
+
     def log_event_times(event)
       logger.debug "start.date_time: #{event.start.date_time.inspect}"
       logger.debug "start.date: #{event.start.date.inspect}"

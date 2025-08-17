@@ -12,6 +12,7 @@ describe Infrastructure::GoogleCalendarRepository do
 
   before do
     allow(Google::Apis::CalendarV3::CalendarService).to receive(:new).and_return(mock_service)
+    allow(mock_service).to receive(:authorization=)
   end
 
   describe '#initialize' do
@@ -27,6 +28,7 @@ describe Infrastructure::GoogleCalendarRepository do
   describe '#fetch_events' do
     context 'when fetching events successfully' do
       before do
+        allow(repository).to receive(:authorize)
         allow(mock_service).to receive(:list_events).and_return(mock_response)
       end
 
@@ -44,8 +46,22 @@ describe Infrastructure::GoogleCalendarRepository do
       end
     end
 
-    context 'when API returns error' do
+    context 'when API returns authorization error' do
       before do
+        allow(repository).to receive(:authorize)
+        allow(mock_service).to receive(:list_events)
+          .and_raise(Google::Apis::AuthorizationError.new('Authorization Error'))
+      end
+
+      it 'should raise AuthenticationRequiredError' do
+        expect { repository.fetch_events(start_date, end_date) }
+          .to raise_error(Application::AuthenticationRequiredError, /認証エラー/)
+      end
+    end
+
+    context 'when API returns client error' do
+      before do
+        allow(repository).to receive(:authorize)
         allow(mock_service).to receive(:list_events)
           .and_raise(Google::Apis::ClientError.new('API Error'))
       end
@@ -53,6 +69,66 @@ describe Infrastructure::GoogleCalendarRepository do
       it 'should raise ExternalServiceError' do
         expect { repository.fetch_events(start_date, end_date) }
           .to raise_error(Infrastructure::ExternalServiceError, /API Error/)
+      end
+    end
+  end
+
+  describe '#authorize' do
+    let(:mock_credentials) { double('credentials', expired?: false) }
+    let(:mock_token_manager) { instance_double(CalendarColorMCP::TokenManager) }
+
+    subject { repository.authorize }
+
+    before do
+      allow(CalendarColorMCP::TokenManager).to receive(:instance).and_return(mock_token_manager)
+      allow(mock_token_manager).to receive(:load_credentials).and_return(mock_credentials)
+    end
+
+    context 'when credentials are valid' do
+      it 'should set authorization on service' do
+        subject
+
+        expect(mock_service).to have_received(:authorization=).with(mock_credentials)
+      end
+    end
+
+    context 'when credentials are not found' do
+      before do
+        allow(mock_token_manager).to receive(:load_credentials).and_return(nil)
+      end
+
+      it 'should raise AuthenticationRequiredError' do
+        expect { subject }
+          .to raise_error(Application::AuthenticationRequiredError, /認証情報が見つかりません/)
+      end
+    end
+
+    context 'when credentials are expired' do
+      let(:expired_credentials) { double('credentials', expired?: true) }
+
+      before do
+        allow(mock_token_manager).to receive(:load_credentials).and_return(expired_credentials)
+        allow(expired_credentials).to receive(:refresh!)
+        allow(mock_token_manager).to receive(:save_credentials)
+      end
+
+      it 'should refresh credentials' do
+        subject
+
+        expect(expired_credentials).to have_received(:refresh!)
+        expect(mock_token_manager).to have_received(:save_credentials).with(expired_credentials)
+      end
+
+      context 'when refresh fails' do
+        before do
+          allow(expired_credentials).to receive(:refresh!)
+            .and_raise(Google::Apis::AuthorizationError.new('Refresh failed'))
+        end
+
+        it 'should raise AuthenticationRequiredError' do
+          expect { subject }
+            .to raise_error(Application::AuthenticationRequiredError, /トークンのリフレッシュに失敗しました/)
+        end
       end
     end
   end
@@ -153,22 +229,20 @@ describe Infrastructure::GoogleCalendarRepositoryLogDecorator do
   end
 
   describe '#authorize' do
-    let(:mock_credentials) { double('credentials') }
-
     before do
       allow(mock_repository).to receive(:authorize)
     end
 
     it 'should delegate to repository' do
-      decorator.authorize(mock_credentials)
+      decorator.authorize
 
-      expect(mock_repository).to have_received(:authorize).with(mock_credentials)
+      expect(mock_repository).to have_received(:authorize)
     end
 
     it 'should log debug information' do
       expect(decorator).to receive(:logger).and_return(double(debug: nil))
 
-      decorator.authorize(mock_credentials)
+      decorator.authorize
     end
   end
 end

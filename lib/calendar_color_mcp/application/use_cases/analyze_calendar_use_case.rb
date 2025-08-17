@@ -48,8 +48,12 @@ module Application
     def get_user_email
       begin
         @calendar_repository.get_user_email
+      rescue Application::AuthenticationRequiredError => e
+        # 認証エラーの場合は再発生させる
+        raise e
       rescue
-        # エラー時はnilを返す（フィルタリング処理側で適切に処理される）
+        # TODO:: 認証エラー時もフィルタリングで処理されるか知りたい
+        # その他のエラー時はnilを返す（フィルタリング処理側で適切に処理される）
         nil
       end
     end
