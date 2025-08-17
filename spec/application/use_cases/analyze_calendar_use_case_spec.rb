@@ -69,27 +69,61 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
       end
     end
 
-    context 'when date parameters are nil' do
+    context 'when date parameters are invalid' do
       before do
         allow(mock_token_manager).to receive(:token_exist?).and_return(true)
       end
 
-      where(:case_name, :test_start_date, :test_end_date) do
-        [
-          ['start_date is nil', nil, Date.parse('2024-01-31')],
-          ['end_date is nil', Date.parse('2024-01-01'), nil],
-          ['both dates are nil', nil, nil]
-        ]
+      context 'when dates are nil' do
+        where(:case_name, :test_start_date, :test_end_date) do
+          [
+            ['start_date is nil', nil, Date.parse('2024-01-31')],
+            ['end_date is nil', Date.parse('2024-01-01'), nil],
+            ['both dates are nil', nil, nil]
+          ]
+        end
+
+        with_them do
+          it 'should raise InvalidParameterError' do
+            expect {
+              use_case.execute(
+                start_date: test_start_date,
+                end_date: test_end_date,
+              )
+            }.to raise_error(Application::InvalidParameterError, "Both start date and end date must be provided")
+          end
+        end
       end
 
-      with_them do
+      context 'when date format is invalid' do
+        where(:case_name, :test_start_date, :test_end_date, :expected_message) do
+          [
+            ['invalid start date format', 'invalid-date', '2024-01-31', /Invalid date format/],
+            ['invalid end date format', '2024-01-01', 'invalid-date', /Invalid date format/],
+            ['both dates invalid format', 'invalid-start', 'invalid-end', /Invalid date format/]
+          ]
+        end
+
+        with_them do
+          it 'should raise InvalidParameterError with date format message' do
+            expect {
+              use_case.execute(
+                start_date: test_start_date,
+                end_date: test_end_date,
+              )
+            }.to raise_error(Application::InvalidParameterError, expected_message)
+          end
+        end
+      end
+
+      context 'when end date is before start date' do
         it 'should raise InvalidParameterError' do
           expect {
             use_case.execute(
-              start_date: test_start_date,
-              end_date: test_end_date,
+              start_date: '2024-01-31',
+              end_date: '2024-01-01',
             )
-          }.to raise_error(Application::InvalidParameterError, "Both start date and end date must be provided")
+          }.to raise_error(Application::InvalidParameterError, "End date must be after start date")
         end
       end
     end

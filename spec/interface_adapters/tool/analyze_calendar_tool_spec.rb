@@ -173,17 +173,17 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
         expect(content['error']).to include('invalid date')
       end
 
-      it 'should handle end date before start date with authentication error' do
+      it 'should handle end date before start date with validation error' do
         init_req = initialize_request(0)
         analysis_req = analyze_calendar_request("2024-01-31", "2024-01-01", 1)
         responses = execute_mcp_requests([init_req, analysis_req])
         response = responses[1]
 
-        # 日付論理エラーは認証エラーとして処理される
+        # 日付バリデーションエラーが認証前に発生する（Use Case層での直接バリデーション）
         expect(response['result']['isError']).to be false
         content = JSON.parse(response['result']['content'][0]['text'])
         expect(content['success']).to be false
-        expect(content['error']).to include('認証が必要です')
+        expect(content['error']).to include('End date must be after start date')
       end
     end
   end

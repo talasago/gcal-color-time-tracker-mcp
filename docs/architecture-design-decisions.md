@@ -273,9 +273,10 @@ lib/calendar_color_mcp/
 ├── domain/                          # Domain層（最内層）
 │   ├── entities/
 │   │   ├── calendar_event.rb       # カレンダーイベントエンティティ
-│   │   ├── time_span.rb            # 時間範囲値オブジェクト
+│   │   ├── event_filter.rb         # イベントフィルタ値オブジェクト
 │   │   ├── auth_token.rb           # 認証トークンエンティティ
-│   │   └── event_filter.rb         # イベントフィルタ値オブジェクト
+│   │   ├── event_filter.rb         # イベントフィルタ値オブジェクト
+│   │   └── color_constants.rb      # 色IDと色名のマッピング（ビジネスドメイン知識）
 │   └── services/
 │       ├── event_duration_calculation_service.rb # イベント期間計算
 │       └── event_filter_service.rb         # イベントフィルタリング（ビジネスルール）
@@ -303,6 +304,7 @@ lib/calendar_color_mcp/
 
 # モジュール名前空間設計（簡潔化）
 # Domain::CalendarEvent (CalendarColorMCPプレフィックスなし)
+# Domain::ColorConstants # 色IDと色名のマッピング（ビジネスドメイン知識）
 # Application::AnalyzeCalendarUseCase
 # Infrastructure::GoogleCalendarRepository
 ```
@@ -401,11 +403,11 @@ end
 module Application
   class AnalyzeCalendarUseCase
     def execute(start_date:, end_date:, color_filters: nil, user_email:)
-      # Domain層の値オブジェクトでバリデーション
-      time_span = Domain::TimeSpan.new(start_date, end_date)
+      # Application層で直接日付バリデーション
+      parsed_start_date, parsed_end_date = validate_date_range(start_date, end_date)
       
       # Infrastructure層からドメインエンティティを取得
-      events = @calendar_repository.fetch_events(time_span.start_date, time_span.end_date)
+      events = @calendar_repository.fetch_events(parsed_start_date, parsed_end_date)
       
       # Domain層サービスでビジネスロジック実行
       @analyzer_service.analyze(events)
@@ -550,17 +552,30 @@ module Application
     end
     
     def execute(start_date:, end_date:, color_filters: nil, user_email:)
-      # 1. ドメイン値オブジェクトでバリデーション
-      time_span = Domain::TimeSpan.new(start_date, end_date)
+      # 1. Application層での直接日付バリデーション
+      parsed_start_date, parsed_end_date = validate_date_range(start_date, end_date)
       
       # 2. Infrastructure層を通じてデータ取得
-      events = @calendar_repository.fetch_events(time_span.start_date, time_span.end_date)
+      events = @calendar_repository.fetch_events(parsed_start_date, parsed_end_date)
       
       # 3. Domain層サービスでフィルタリング
       filtered_events = @event_filter_service.apply_filters(events, color_filters, user_email)
       
       # 4. Domain層サービスで分析
       Domain::EventDurationCalculationService.new.calculate_total_duration(filtered_events)
+    end
+    
+    private
+    
+    def validate_date_range(start_date, end_date)
+      parsed_start = Date.parse(start_date.to_s)
+      parsed_end = Date.parse(end_date.to_s)
+      
+      if parsed_end < parsed_start
+        raise Application::ValidationError, "End date must be after start date"
+      end
+      
+      [parsed_start, parsed_end]
     end
   end
 end

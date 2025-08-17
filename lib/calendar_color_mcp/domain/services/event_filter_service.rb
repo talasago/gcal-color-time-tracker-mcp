@@ -1,61 +1,27 @@
+# frozen_string_literal: true
+
 module Domain
   class EventFilterService
     def apply_filters(events, color_filters, user_email)
-      # まず参加済みイベントのみにフィルタリング
-      filtered_events = filter_attended_events(events, user_email)
-      
-      # 色フィルタリングは後で実装予定（現在は全て通す）
-      filtered_events
-    end
-    
-    def filter_attended_events(events, user_email)
-      events.select { |event| attended_event?(event, user_email) }
+      # 参加イベントフィルタリング（ビジネスルール）
+      attended_events = events.select { |event| event.attended_by?(user_email) }
+
+      # 色によるフィルタリング（ビジネスルール）
+      filter_by_colors(attended_events, color_filters)
     end
 
     private
 
-    def attended_event?(event, user_email)
-      # 主催者の場合は自動的に参加とみなす
-      return true if event.organizer&.self
+    def filter_by_colors(events, color_filters)
+      return events unless color_filters
 
-      # 参加者情報がない場合（プライベートイベント）は参加とみなす
-      return true if event.attendees.nil? || event.attendees.empty?
-
-      # 参加者リストから自分の参加状況を確認
-      user_attendee = event.attendees.find { |attendee|
-        attendee.email == user_email || attendee.self
-      }
-
-      if user_attendee
-        # 参加承認している場合のみ true
-        user_attendee.response_status == 'accepted'
+      # 色による包含/除外ロジック（ドメインルール）
+      if color_filters[:include_colors]
+        events.select { |event| color_filters[:include_colors].include?(event.color_id) }
+      elsif color_filters[:exclude_colors]
+        events.reject { |event| color_filters[:exclude_colors].include?(event.color_id) }
       else
-        # 参加者リストにいない場合は参加とみなす（プライベートイベントなど）
-        true
-      end
-    end
-
-    def get_attendance_status(event, user_email)
-      if event.organizer&.self
-        "Organizer"
-      elsif event.attendees.nil? || event.attendees.empty?
-        "Private event"
-      else
-        user_attendee = event.attendees.find { |attendee|
-          attendee.email == user_email || attendee.self
-        }
-
-        if user_attendee
-          case user_attendee.response_status
-          when 'accepted' then 'Accepted'
-          when 'declined' then 'Declined'
-          when 'tentative' then 'Tentative'
-          when 'needsAction' then 'Needs action'
-          else user_attendee.response_status || 'Unknown'
-          end
-        else
-          "No attendee list"
-        end
+        events
       end
     end
   end

@@ -20,12 +20,12 @@ module Application
     end
 
     def execute(start_date:, end_date:, color_filters: nil, user_email: nil)
-      validate_date_range(start_date, end_date)
+      parsed_start_date, parsed_end_date = validate_and_parse_dates(start_date, end_date)
       ensure_authenticated
-      events = @calendar_repository.fetch_events(start_date, end_date)
+      events = @calendar_repository.fetch_events(parsed_start_date, parsed_end_date)
       filtered_events = @filter_service.apply_filters(events, color_filters, get_user_email)
       # TODO: ドメインロジック使るときにまた見直す
-      @analyzer_service.analyze(filtered_events, start_date, end_date)
+      @analyzer_service.analyze(filtered_events, parsed_start_date, parsed_end_date)
     rescue Application::AuthenticationRequiredError => e
       raise Application::AuthenticationRequiredError, e.message
     end
@@ -38,11 +38,24 @@ module Application
       end
     end
 
-    def validate_date_range(start_date, end_date)
-      # TODO:バリデーションがこのusecaseの役割なのか気になるなあ。
+    def validate_and_parse_dates(start_date, end_date)
+      # Application層での直接日付バリデーション（YAGNI原則に従った設計）
       if start_date.nil? || end_date.nil?
         raise Application::InvalidParameterError, "Both start date and end date must be provided"
       end
+
+      begin
+        parsed_start = Date.parse(start_date.to_s)
+        parsed_end = Date.parse(end_date.to_s)
+      rescue ArgumentError => e
+        raise Application::InvalidParameterError, "Invalid date format: #{e.message}"
+      end
+
+      if parsed_end < parsed_start
+        raise Application::InvalidParameterError, "End date must be after start date"
+      end
+
+      [parsed_start, parsed_end]
     end
 
     def get_user_email

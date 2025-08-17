@@ -265,12 +265,12 @@ module Application
       # 1. 認証確認
       ensure_authenticated
       
-      # 2. バリデーション
-      validate_date_range(start_date, end_date)
+      # 2. 日付範囲バリデーション
+      parsed_start_date, parsed_end_date = validate_date_range(start_date, end_date)
       
       # 3. イベント取得（デバッグログ付き）
       debug_repository = Infrastructure::GoogleCalendarRepositoryLogDecorator.new(@calendar_repository)
-      events = debug_repository.fetch_events(start_date, end_date)
+      events = debug_repository.fetch_events(parsed_start_date, parsed_end_date)
       
       # 4. フィルタリング適用（Domain::EventFilterService）
       filtered_events = @filter_service.apply_filters(events, color_filters, user_email)
@@ -388,12 +388,12 @@ rescue Application::ValidationError => e
 module Application
   class AnalyzeCalendarUseCase
     def execute(start_date:, end_date:, color_filters: nil, user_email:)
-      # バリデーションはUse Case内で実行
-      validate_date_range(start_date, end_date)
+      # 日付範囲バリデーション
+      parsed_start_date, parsed_end_date = validate_date_range(start_date, end_date)
       
       # ビジネスロジック実行（デバッグログ付き）
       debug_repository = Infrastructure::GoogleCalendarRepositoryLogDecorator.new(@calendar_repository)
-      events = debug_repository.fetch_events(start_date, end_date)
+      events = debug_repository.fetch_events(parsed_start_date, parsed_end_date)
       filtered_events = @filter_service.apply_filters(events, color_filters, user_email)
       @analyzer_service.analyze(filtered_events)
     end
@@ -401,9 +401,14 @@ module Application
     private
     
     def validate_date_range(start_date, end_date)
-      if end_date <= start_date
+      parsed_start = Date.parse(start_date.to_s)
+      parsed_end = Date.parse(end_date.to_s)
+      
+      if parsed_end < parsed_start
         raise Application::ValidationError, "End date must be after start date"
       end
+      
+      [parsed_start, parsed_end]
     end
   end
 end
@@ -558,9 +563,7 @@ end
 module InterfaceAdapters
   class AnalyzeCalendarTool < BaseTool
     def call(start_date:, end_date:, include_colors: nil, exclude_colors: nil, **context)
-      # 1. パラメータ変換
-      parsed_start_date = Date.parse(start_date)
-      parsed_end_date = Date.parse(end_date)
+      # 1. パラメータ変換（日付バリデーション含む）
       color_filters = build_color_filters(include_colors, exclude_colors)
       user_email = extract_user_email(context)
       
@@ -571,8 +574,8 @@ module InterfaceAdapters
       )
       
       result = use_case.execute(
-        start_date: parsed_start_date,
-        end_date: parsed_end_date,
+        start_date: start_date,
+        end_date: end_date,
         color_filters: color_filters,
         user_email: user_email
       )
@@ -604,6 +607,44 @@ end
 
 ### 1.1 エンティティの作成
 
+**ColorConstants移行（最優先）**
+```ruby
+# lib/calendar_color_mcp/domain/entities/color_constants.rb
+module Domain
+  class ColorConstants
+    COLOR_NAMES = {
+      1 => '薄紫', 2 => '緑', 3 => '紫', 4 => '赤', 5 => '黄',
+      6 => 'オレンジ', 7 => '水色', 8 => '灰色', 9 => '青',
+      10 => '濃い緑', 11 => '濃い赤'
+    }.freeze
+
+    NAME_TO_ID = COLOR_NAMES.invert.freeze
+    DEFAULT_COLOR_ID = 9
+
+    def self.name_to_id
+      NAME_TO_ID
+    end
+
+    def self.default_color_id
+      DEFAULT_COLOR_ID
+    end
+
+    def self.color_names_array
+      COLOR_NAMES.values
+    end
+
+    def self.valid_color_id?(id)
+      COLOR_NAMES.key?(id)
+    end
+
+    def self.color_name(id)
+      COLOR_NAMES[id]
+    end
+  end
+end
+```
+
+**CalendarEventエンティティ作成**
 ```ruby
 # lib/calendar_color_mcp/domain/entities/calendar_event.rb
 module Domain
@@ -635,7 +676,7 @@ module Domain
     end
     
     def color_name
-      ColorConstants::COLOR_NAMES[@color_id] || ColorConstants::DEFAULT_COLOR_NAME
+      Domain::ColorConstants::COLOR_NAMES[@color_id] || Domain::ColorConstants::DEFAULT_COLOR_NAME
     end
     
     private
@@ -664,42 +705,7 @@ end
 
 ### 1.2 値オブジェクトの作成
 
-```ruby
-# lib/calendar_color_mcp/domain/entities/time_span.rb
-module Domain
-  class TimeSpan
-    attr_reader :start_date, :end_date
-    
-    def initialize(start_date, end_date)
-      @start_date = Date.parse(start_date.to_s)
-      @end_date = Date.parse(end_date.to_s)
-      
-      validate_date_range
-    end
-    
-    def days
-      (@end_date - @start_date).to_i + 1
-    end
-    
-    def include?(date)
-      date = Date.parse(date.to_s)
-      @start_date <= date && date <= @end_date
-    end
-    
-    def overlap?(other_span)
-      @start_date <= other_span.end_date && other_span.start_date <= @end_date
-    end
-    
-    private
-    
-    def validate_date_range
-      if @end_date < @start_date
-        raise Domain::DataIntegrityError, "End date must be after or equal to start date"
-      end
-    end
-  end
-end
-```
+**注意**: TimeSpan値オブジェクトは削除されました。日付範囲のバリデーションはApplication層のAnalyzeCalendarUseCase内で直接実行されます。これはYAGNI原則に従い、単一Use Case専用の機能に対する過度な抽象化を避けるためです。
 
 ### 1.3 ドメインサービス作成
 
@@ -775,8 +781,8 @@ module Domain
       color_data = {}
 
       events.each do |event|
-        color_id = event.color_id&.to_i || ColorConstants.default_color_id
-        color_name = ColorConstants.color_name(color_id) || "不明 (#{color_id})"
+        color_id = event.color_id&.to_i || Domain::ColorConstants.default_color_id
+        color_name = Domain::ColorConstants.color_name(color_id) || "不明 (#{color_id})"
 
         color_data[color_name] ||= {
           total_hours: 0.0,
@@ -830,22 +836,6 @@ end
 - 色フィルタリング責任の分離: `TimeAnalyzer`から複雑な色フィルタロジックを除去
 - 既存ロジック保持: 時間計算とサマリー生成の実績あるロジックを維持
 
-### 1.4 Repository Interfaceの定義
-
-```ruby
-# lib/calendar_color_mcp/infrastructure/repositories/calendar_repository_interface.rb
-module Infrastructure
-  module CalendarRepositoryInterface
-    def fetch_events(start_date, end_date)
-      raise NotImplementedError, "#{self.class} must implement #fetch_events"
-    end
-    
-    def get_user_email
-      raise NotImplementedError, "#{self.class} must implement #get_user_email"
-    end
-  end
-end
-```
 
 ---
 
@@ -1007,9 +997,9 @@ lib/calendar_color_mcp/
 ├── domain/                          # Domain層
 │   ├── entities/
 │   │   ├── calendar_event.rb       # カレンダーイベントエンティティ
-│   │   ├── time_span.rb            # 時間範囲値オブジェクト
 │   │   ├── auth_token.rb           # 認証トークンエンティティ
-│   │   └── event_filter.rb         # イベントフィルタ値オブジェクト
+│   │   ├── event_filter.rb         # イベントフィルタ値オブジェクト
+│   │   └── color_constants.rb      # 色IDと色名のマッピング（既存移行）
 │   └── services/
 │       ├── time_analysis_service.rb        # 時間分析（既存TimeAnalyzerから移行）
 │       ├── event_filter_service.rb         # イベントフィルタリング（ビジネスルール）
@@ -1031,17 +1021,16 @@ lib/calendar_color_mcp/
 │       └── base_tool.rb             # 既存維持
 ├── infrastructure/                  # Infrastructure層
 │   ├── repositories/
-│   │   ├── calendar_repository_interface.rb # Repository Interface
 │   │   ├── google_calendar_repository.rb   # Google Calendar API Repository (GoogleCalendarRepositoryLogDecoratorを含む)
 │   │   └── token_file_repository.rb        # Token File Repository
 │   └── services/
 │       └── configuration_service.rb        # 設定管理サービス
 ├── calendar_color_mcp.rb           # ルートファイル
-├── color_constants.rb              # 既存維持
-├── color_filter_manager.rb         # 既存維持
-├── errors.rb                       # 拡張
+├── color_constants.rb              # 段階的廃止予定
+├── color_filter_manager.rb         # 段階的廃止予定
+├── errors.rb                       # 段階的廃止予定
 ├── google_calendar_auth_manager.rb # 部分修正
-├── google_calendar_client.rb       # 大幅リファクタ予定
+├── google_calendar_client.rb       # 段階的廃止予定
 ├── loggable.rb                     # 既存維持
 ├── logger_manager.rb               # 既存維持
 ├── server.rb                       # 部分修正
@@ -1050,6 +1039,7 @@ lib/calendar_color_mcp/
 
 # モジュール名前空間設計（簡潔化）
 # Domain::CalendarEvent
+# Domain::ColorConstants               # 既存ColorConstantsから移行
 # Domain::TimeAnalysisService          # 既存TimeAnalyzerから移行
 # Domain::EventFilterService           # ビジネスルール
 # Application::AnalyzeCalendarUseCase  

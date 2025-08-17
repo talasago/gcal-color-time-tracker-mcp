@@ -1,7 +1,7 @@
 require 'spec_helper'
-require_relative '../lib/calendar_color_mcp/color_constants'
+require_relative '../../../lib/calendar_color_mcp/domain/entities/color_constants'
 
-RSpec.describe CalendarColorMCP::ColorConstants do
+RSpec.describe Domain::ColorConstants do
 
   describe '.name_to_id' do
     it 'returns the correct name to id mapping' do
