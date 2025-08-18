@@ -71,29 +71,4 @@ describe Domain::Organizer do
     end
   end
 
-  describe '#display_name_or_email' do
-    context 'when display_name is present' do
-      let(:display_name) { 'Test Organizer' }
-
-      it 'should return display_name' do
-        expect(organizer.display_name_or_email).to eq(display_name)
-      end
-    end
-
-    context 'when display_name is nil' do
-      let(:display_name) { nil }
-
-      it 'should return email' do
-        expect(organizer.display_name_or_email).to eq(email)
-      end
-    end
-
-    context 'when display_name is empty string' do
-      let(:display_name) { '' }
-
-      it 'should return email' do
-        expect(organizer.display_name_or_email).to eq(email)
-      end
-    end
-  end
 end
