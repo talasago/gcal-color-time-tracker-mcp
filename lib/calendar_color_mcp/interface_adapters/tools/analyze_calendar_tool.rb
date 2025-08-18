@@ -113,26 +113,6 @@ module InterfaceAdapters
       end
 
 
-      def extract_calendar_repository(context)
-        server_context = context[:server_context]
-        calendar_repository = server_context&.dig(:calendar_repository)
-
-        calendar_repository || raise(InterfaceAdapters::DependencyInjectionError, "calendar_repository not found in server_context")
-      end
-
-      def extract_token_repository(context)
-        server_context = context[:server_context]
-        token_repository = server_context&.dig(:token_repository)
-
-        token_repository || raise(InterfaceAdapters::DependencyInjectionError, "token_repository not found in server_context")
-      end
-
-      def extract_oauth_service(context)
-        server_context = context[:server_context]
-        oauth_service = server_context&.dig(:oauth_service)
-
-        oauth_service || raise(InterfaceAdapters::DependencyInjectionError, "oauth_service not found in server_context")
-      end
 
 
       def build_filter_summary(include_colors, exclude_colors)

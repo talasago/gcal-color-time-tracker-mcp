@@ -43,22 +43,6 @@ module InterfaceAdapters
           error_response("認証完了時に予期しないエラーが発生しました")
         end
       end
-
-      private
-
-      def extract_oauth_service(context)
-        server_context = context[:server_context]
-        oauth_service = server_context&.dig(:oauth_service)
-
-        oauth_service || raise(InterfaceAdapters::DependencyInjectionError, "oauth_service not found in server_context")
-      end
-
-      def extract_token_repository(context)
-        server_context = context[:server_context]
-        token_repository = server_context&.dig(:token_repository)
-
-        token_repository || raise(InterfaceAdapters::DependencyInjectionError, "token_repository not found in server_context")
-      end
     end
   end
 end
