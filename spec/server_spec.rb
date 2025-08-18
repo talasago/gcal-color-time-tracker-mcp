@@ -22,8 +22,7 @@ describe CalendarColorMCP::Server do
 
   before do
     # モック設定: 外部依存を分離
-    allow(CalendarColorMCP::TokenManager).to receive(:instance).and_return(double('TokenManager'))
-    allow(CalendarColorMCP::GoogleCalendarAuthManager).to receive(:instance).and_return(double('GoogleCalendarAuthManager'))
+    allow(Infrastructure::TokenRepository).to receive(:instance).and_return(double('TokenRepository'))
   end
 
   describe '#initialize' do

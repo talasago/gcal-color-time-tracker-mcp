@@ -2,7 +2,7 @@ require 'google/apis/calendar_v3'
 require_relative '../errors'
 require_relative '../../application/errors'
 require_relative '../../loggable'
-require_relative '../../token_manager'
+require_relative 'token_repository'
 require_relative '../../domain/entities/calendar_event'
 require_relative '../../domain/entities/attendee'
 require_relative '../../domain/entities/organizer'
@@ -12,7 +12,7 @@ module Infrastructure
   class GoogleCalendarRepository
     def initialize
       @service = Google::Apis::CalendarV3::CalendarService.new
-      @token_manager = CalendarColorMCP::TokenManager.instance
+      @token_repository = TokenRepository.instance
     end
 
     def fetch_events(start_date, end_date)
@@ -62,7 +62,7 @@ module Infrastructure
 
     def load_credentials
       begin
-        credentials = @token_manager.load_credentials
+        credentials = @token_repository.load_credentials
       rescue => e
         raise Infrastructure::ExternalServiceError, "認証情報の検証に失敗しました: #{e.message}"
       end
@@ -76,7 +76,7 @@ module Infrastructure
       return unless credentials.expired?
 
       credentials.refresh!
-      @token_manager.save_credentials(credentials)
+      @token_repository.save_credentials(credentials)
     rescue Google::Apis::AuthorizationError => e
       raise Application::AuthenticationRequiredError, "トークンのリフレッシュに失敗しました: #{e.message}"
     rescue => e

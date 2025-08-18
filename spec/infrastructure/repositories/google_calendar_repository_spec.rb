@@ -101,13 +101,13 @@ describe Infrastructure::GoogleCalendarRepository do
 
   describe '#authorize' do
     let(:mock_credentials) { double('credentials', expired?: false) }
-    let(:mock_token_manager) { instance_double(CalendarColorMCP::TokenManager) }
+    let(:mock_token_repository) { instance_double(Infrastructure::TokenRepository) }
 
     subject { repository.authorize }
 
     before do
-      allow(CalendarColorMCP::TokenManager).to receive(:instance).and_return(mock_token_manager)
-      allow(mock_token_manager).to receive(:load_credentials).and_return(mock_credentials)
+      allow(Infrastructure::TokenRepository).to receive(:instance).and_return(mock_token_repository)
+      allow(mock_token_repository).to receive(:load_credentials).and_return(mock_credentials)
     end
 
     context 'when credentials are valid' do
@@ -120,7 +120,7 @@ describe Infrastructure::GoogleCalendarRepository do
 
     context 'when credentials are not found' do
       before do
-        allow(mock_token_manager).to receive(:load_credentials).and_return(nil)
+        allow(mock_token_repository).to receive(:load_credentials).and_return(nil)
       end
 
       it 'should raise AuthenticationRequiredError' do
@@ -133,16 +133,16 @@ describe Infrastructure::GoogleCalendarRepository do
       let(:expired_credentials) { double('credentials', expired?: true) }
 
       before do
-        allow(mock_token_manager).to receive(:load_credentials).and_return(expired_credentials)
+        allow(mock_token_repository).to receive(:load_credentials).and_return(expired_credentials)
         allow(expired_credentials).to receive(:refresh!)
-        allow(mock_token_manager).to receive(:save_credentials)
+        allow(mock_token_repository).to receive(:save_credentials)
       end
 
       it 'should refresh credentials' do
         subject
 
         expect(expired_credentials).to have_received(:refresh!)
-        expect(mock_token_manager).to have_received(:save_credentials).with(expired_credentials)
+        expect(mock_token_repository).to have_received(:save_credentials).with(expired_credentials)
       end
 
       context 'when refresh fails' do
