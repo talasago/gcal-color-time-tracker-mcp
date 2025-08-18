@@ -1,13 +1,16 @@
 require 'mcp'
 require_relative 'loggable'
-require_relative 'token_manager'
-require_relative 'google_calendar_auth_manager'
 require_relative 'interface_adapters/tools/analyze_calendar_tool'
 require_relative 'interface_adapters/tools/start_auth_tool'
 require_relative 'interface_adapters/tools/check_auth_status_tool'
 require_relative 'interface_adapters/tools/complete_auth_tool'
 require_relative 'infrastructure/repositories/google_calendar_repository'
+require_relative 'infrastructure/repositories/token_repository'
 require_relative 'infrastructure/services/configuration_service'
+require_relative 'infrastructure/services/google_oauth_service'
+require_relative 'application/use_cases/authenticate_user_use_case'
+require_relative 'domain/entities/attendee'
+require_relative 'domain/entities/organizer'
 
 module CalendarColorMCP
   class Server
@@ -26,8 +29,8 @@ module CalendarColorMCP
         raise e.message
       end
 
-      @token_manager = TokenManager.instance
-      @auth_manager = GoogleCalendarAuthManager.instance
+      @oauth_service = Infrastructure::GoogleOAuthService.new
+      @token_repository = Infrastructure::TokenRepository.instance
       @calendar_repository = Infrastructure::GoogleCalendarRepositoryLogDecorator.new(
         Infrastructure::GoogleCalendarRepository.new
       )
@@ -44,8 +47,8 @@ module CalendarColorMCP
             InterfaceAdapters::CompleteAuthTool
           ],
           server_context: {
-            token_manager: @token_manager,
-            auth_manager: @auth_manager,
+            oauth_service: @oauth_service,
+            token_repository: @token_repository,
             calendar_repository: @calendar_repository
           }
         )

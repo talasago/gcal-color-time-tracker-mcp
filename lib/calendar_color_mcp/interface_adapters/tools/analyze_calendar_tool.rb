@@ -56,8 +56,7 @@ module InterfaceAdapters
 
           use_case = Application::AnalyzeCalendarUseCase.new(
             calendar_repository: extract_calendar_repository(context),
-            token_manager: extract_token_manager(context),
-            auth_manager: extract_auth_manager(context)
+            token_repository: extract_token_repository(context)
           )
 
           result = use_case.execute(
@@ -80,7 +79,8 @@ module InterfaceAdapters
 
         rescue Application::AuthenticationRequiredError => e
           logger.debug "Authentication error: #{e.message}"
-          auth_url = extract_auth_manager(context).get_auth_url
+          oauth_service = extract_oauth_service(context)
+          auth_url = oauth_service.generate_auth_url
           error_response(e.message, auth_url: auth_url)
         rescue Application::InvalidParameterError => e
           logger.error "Validation error: #{e.message}"
@@ -118,6 +118,20 @@ module InterfaceAdapters
         calendar_repository = server_context&.dig(:calendar_repository)
 
         calendar_repository || raise(InterfaceAdapters::DependencyInjectionError, "calendar_repository not found in server_context")
+      end
+
+      def extract_token_repository(context)
+        server_context = context[:server_context]
+        token_repository = server_context&.dig(:token_repository)
+
+        token_repository || raise(InterfaceAdapters::DependencyInjectionError, "token_repository not found in server_context")
+      end
+
+      def extract_oauth_service(context)
+        server_context = context[:server_context]
+        oauth_service = server_context&.dig(:oauth_service)
+
+        oauth_service || raise(InterfaceAdapters::DependencyInjectionError, "oauth_service not found in server_context")
       end
 
 

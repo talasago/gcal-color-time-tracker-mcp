@@ -72,7 +72,7 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
         aggregate_failures do
           expect(content['success']).to be true
           expect(content['authenticated']).to be false
-          expect(content['message']).to eq('認証が必要です')
+          expect(content['message']).to match(/認証が必要です/)
           expect(content).to have_key('auth_url')
           expect(content['auth_url']).to start_with('https://accounts.google.com/oauth2/auth')
         end

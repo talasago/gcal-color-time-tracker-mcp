@@ -37,7 +37,7 @@ module Domain
     private
 
     def organized_by_user?
-      @organizer&.self
+      @organizer&.self?
     end
 
     def private_event?
@@ -45,7 +45,7 @@ module Domain
     end
 
     def find_user_attendee(user_email)
-      @attendees&.find { |attendee| attendee.email == user_email || attendee.self }
+      @attendees&.find { |attendee| attendee.email == user_email || attendee.self? }
     end
   end
 end

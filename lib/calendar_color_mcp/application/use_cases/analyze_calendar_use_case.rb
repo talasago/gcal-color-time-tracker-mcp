@@ -1,21 +1,24 @@
 require_relative '../errors'
-require_relative '../../token_manager'
-require_relative '../../google_calendar_auth_manager'
+require_relative '../../infrastructure/repositories/token_repository'
+require_relative '../../infrastructure/repositories/google_calendar_repository'
 require_relative '../../domain/services/event_filter_service'
 require_relative '../../domain/services/time_analysis_service'
 
 module Application
   class AnalyzeCalendarUseCase
     def initialize(
-      calendar_repository: nil,
-      token_manager: CalendarColorMCP::TokenManager.instance,
-      auth_manager: CalendarColorMCP::GoogleCalendarAuthManager.instance
+      # FIXME: Infra層を知っているのは良くない
+      calendar_repository: Infrastructure::GoogleCalendarRepositoryLogDecorator.new(
+        Infrastructure::GoogleCalendarRepository.new
+      ),
+      token_repository: Infrastructure::TokenRepository.instance,
+      filter_service: Domain::EventFilterService.new,
+      analyzer_service: Domain::TimeAnalysisService.new
     )
       @calendar_repository = calendar_repository
-      @filter_service = Domain::EventFilterService.new
-      @analyzer_service = Domain::TimeAnalysisService.new
-      @token_manager = token_manager
-      @auth_manager = auth_manager
+      @token_repository = token_repository
+      @filter_service = filter_service
+      @analyzer_service = analyzer_service
     end
 
     def execute(start_date:, end_date:, color_filters: nil, user_email: nil)
@@ -31,7 +34,7 @@ module Application
     private
 
     def ensure_authenticated
-      unless @token_manager.token_exist?
+      unless @token_repository.token_exist?
         raise Application::AuthenticationRequiredError, "認証が必要です"
       end
     end

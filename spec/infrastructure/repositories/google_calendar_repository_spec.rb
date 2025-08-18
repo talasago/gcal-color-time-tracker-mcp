@@ -1,11 +1,32 @@
 require 'spec_helper'
 require_relative '../../../lib/calendar_color_mcp/infrastructure/repositories/google_calendar_repository'
 
+# TODO: attendeesとorganizerクラスが作られていることのテストが必要追加
+
 describe Infrastructure::GoogleCalendarRepository do
   let(:mock_service) { instance_double(Google::Apis::CalendarV3::CalendarService) }
   let(:start_date) { Date.new(2024, 1, 1) }
   let(:end_date) { Date.new(2024, 1, 31) }
-  let(:mock_events) { ['event1', 'event2', 'event3'] }
+  let(:mock_api_event) do
+    double('api_event').tap do |event|
+      allow(event).to receive(:summary).and_return('Test Event')
+      allow(event).to receive(:color_id).and_return('1')
+      allow(event).to receive(:attendees).and_return(nil)
+      allow(event).to receive(:organizer).and_return(nil)
+
+      start_obj = double('start')
+      allow(start_obj).to receive(:date_time).and_return(Time.parse('2024-01-01 10:00:00'))
+      allow(start_obj).to receive(:date).and_return(nil)
+      allow(event).to receive(:start).and_return(start_obj)
+
+      end_obj = double('end')
+      allow(end_obj).to receive(:date_time).and_return(Time.parse('2024-01-01 11:00:00'))
+      allow(end_obj).to receive(:date).and_return(nil)
+      allow(event).to receive(:end).and_return(end_obj)
+    end
+  end
+
+  let(:mock_events) { [mock_api_event] }
   let(:mock_response) { double('response', items: mock_events) }
 
   subject(:repository) { described_class.new }
@@ -19,7 +40,7 @@ describe Infrastructure::GoogleCalendarRepository do
     context 'when initializing repository' do
       it 'should create a Google Calendar service instance' do
         expect(Google::Apis::CalendarV3::CalendarService).to receive(:new)
-        
+
         described_class.new
       end
     end
@@ -32,10 +53,15 @@ describe Infrastructure::GoogleCalendarRepository do
         allow(mock_service).to receive(:list_events).and_return(mock_response)
       end
 
-      it 'should fetch events from Google Calendar API' do
+      it 'should fetch events from Google Calendar API and convert to Domain objects' do
         result = repository.fetch_events(start_date, end_date)
 
-        expect(result).to eq(mock_events)
+        expect(result).to be_an(Array)
+        expect(result.length).to eq(1)
+        expect(result.first).to be_a(Domain::CalendarEvent)
+        expect(result.first.summary).to eq('Test Event')
+        expect(result.first.color_id).to eq(1)
+
         expect(mock_service).to have_received(:list_events).with(
           'primary',
           time_min: Time.new(2024, 1, 1, 0, 0, 0).iso8601,
@@ -167,22 +193,26 @@ describe Infrastructure::GoogleCalendarRepositoryLogDecorator do
   let(:start_date) { Date.new(2024, 1, 1) }
   let(:end_date) { Date.new(2024, 1, 31) }
   let(:mock_events) { [mock_event1, mock_event2] }
-  
+
   let(:mock_event1) do
-    double('event1',
+    Domain::CalendarEvent.new(
       summary: 'Test Event 1',
-      color_id: '1',
-      start: double(date_time: Time.parse('2024-01-01 10:00:00'), date: nil),
-      end: double(date_time: Time.parse('2024-01-01 11:00:00'), date: nil)
+      start_time: Time.parse('2024-01-01 10:00:00'),
+      end_time: Time.parse('2024-01-01 11:00:00'),
+      color_id: 1,
+      attendees: [],
+      organizer: nil
     )
   end
-  
+
   let(:mock_event2) do
-    double('event2',
+    Domain::CalendarEvent.new(
       summary: 'Test Event 2',
-      color_id: '2',
-      start: double(date_time: nil, date: Date.parse('2024-01-02')),
-      end: double(date_time: nil, date: Date.parse('2024-01-02'))
+      start_time: Time.parse('2024-01-02 00:00:00'),
+      end_time: Time.parse('2024-01-02 23:59:59'),
+      color_id: 2,
+      attendees: [],
+      organizer: nil
     )
   end
 

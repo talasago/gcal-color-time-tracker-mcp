@@ -3,6 +3,10 @@ require_relative '../errors'
 require_relative '../../application/errors'
 require_relative '../../loggable'
 require_relative '../../token_manager'
+require_relative '../../domain/entities/calendar_event'
+require_relative '../../domain/entities/attendee'
+require_relative '../../domain/entities/organizer'
+require_relative '../../domain/entities/color_constants'
 
 module Infrastructure
   class GoogleCalendarRepository
@@ -24,8 +28,8 @@ module Infrastructure
         order_by: 'startTime'
       )
 
-      # TODO:ここでdomainのオブジェクトに変換しなくていいのか？
-      response.items
+      # Google API Event → Domain::CalendarEvent変換
+      response.items.map { |api_event| convert_to_domain_event(api_event) }
     rescue Google::Apis::AuthorizationError => e
       raise Application::AuthenticationRequiredError, "認証エラー: #{e.message}"
     rescue Google::Apis::ClientError, Google::Apis::ServerError => e
@@ -84,6 +88,59 @@ module Infrastructure
     rescue => e
       raise Infrastructure::ExternalServiceError, "認証設定に失敗しました: #{e.message}"
     end
+
+    def convert_to_domain_event(api_event)
+      Domain::CalendarEvent.new(
+        summary: api_event.summary,
+        start_time: extract_start_time(api_event),
+        end_time: extract_end_time(api_event),
+        color_id: api_event.color_id&.to_i || Domain::ColorConstants::DEFAULT_COLOR_ID, # FIXME:これデフォルトを代入していいか？
+        attendees: convert_attendees(api_event.attendees),
+        organizer: convert_organizer(api_event.organizer)
+      )
+    end
+
+    def extract_start_time(api_event)
+      if api_event.start.date_time
+        api_event.start.date_time
+      elsif api_event.start.date
+        Date.parse(api_event.start.date).to_time
+      else
+        nil
+      end
+    end
+
+    def extract_end_time(api_event)
+      if api_event.end.date_time
+        api_event.end.date_time
+      elsif api_event.end.date
+        Date.parse(api_event.end.date).to_time
+      else
+        nil
+      end
+    end
+
+    def convert_attendees(api_attendees)
+      return [] unless api_attendees
+
+      api_attendees.map do |api_attendee|
+        Domain::Attendee.new(
+          email: api_attendee.email,
+          response_status: api_attendee.response_status,
+          self: api_attendee.self || false
+        )
+      end
+    end
+
+    def convert_organizer(api_organizer)
+      return nil unless api_organizer
+
+      Domain::Organizer.new(
+        email: api_organizer.email,
+        display_name: api_organizer.display_name,
+        self: api_organizer.self || false
+      )
+    end
   end
 
   class GoogleCalendarRepositoryLogDecorator
@@ -131,10 +188,10 @@ module Infrastructure
     end
 
     def log_event_times(event)
-      logger.debug "start.date_time: #{event.start.date_time.inspect}"
-      logger.debug "start.date: #{event.start.date.inspect}"
-      logger.debug "end.date_time: #{event.end.date_time.inspect}"
-      logger.debug "end.date: #{event.end.date.inspect}"
+      # Domain::CalendarEventオブジェクト用のログ出力
+      logger.debug "start_time: #{event.start_time.inspect}"
+      logger.debug "end_time: #{event.end_time.inspect}"
+      logger.debug "duration_hours: #{event.duration_hours}"
     end
   end
 end

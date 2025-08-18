@@ -2,15 +2,17 @@ require 'spec_helper'
 require_relative '../../../lib/calendar_color_mcp/application/use_cases/analyze_calendar_use_case'
 
 RSpec.describe Application::AnalyzeCalendarUseCase do
-  let(:mock_calendar_repository) { instance_double('GoogleCalendarRepository') }
-  let(:mock_token_manager) { CalendarColorMCP::TokenManager.instance }
-  let(:mock_auth_manager) { CalendarColorMCP::GoogleCalendarAuthManager.instance }
+  let(:mock_calendar_repository) { instance_double('Infrastructure::GoogleCalendarRepository') }
+  let(:mock_token_repository) { instance_double('Infrastructure::TokenRepository') }
+  let(:mock_filter_service) { instance_double('Domain::EventFilterService') }
+  let(:mock_analyzer_service) { instance_double('Domain::TimeAnalysisService') }
 
   subject(:use_case) do
     Application::AnalyzeCalendarUseCase.new(
       calendar_repository: mock_calendar_repository,
-      token_manager: mock_token_manager,
-      auth_manager: mock_auth_manager
+      token_repository: mock_token_repository,
+      filter_service: mock_filter_service,
+      analyzer_service: mock_analyzer_service
     )
   end
 
@@ -30,6 +32,13 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
     end
   end
 
+  let(:mock_analysis_result) do
+    {
+      color_breakdown: { '2' => 1 },
+      summary: { total_events: 1, total_duration: 3600 }
+    }
+  end
+
   describe '#initialize' do
     it 'should initialize with dependencies' do
       expect(use_case).to be_a(Application::AnalyzeCalendarUseCase)
@@ -39,30 +48,27 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
   describe '#execute' do
     context 'when user is authenticated' do
       before do
-        allow(mock_token_manager).to receive(:token_exist?).and_return(true)
+        allow(mock_token_repository).to receive(:token_exist?).and_return(true)
         allow(mock_calendar_repository).to receive(:fetch_events).and_return([mock_event])
         allow(mock_calendar_repository).to receive(:get_user_email).and_return(user_email)
+        allow(mock_filter_service).to receive(:apply_filters).and_return([mock_event])
+        allow(mock_analyzer_service).to receive(:analyze).and_return(mock_analysis_result)
       end
 
-      it 'should analyze calendar events successfully' do
+      it 'should analyze calendar events successfully and return analysis data' do
         result = use_case.execute(
           start_date: start_date,
           end_date: end_date,
         )
 
-        expect(result).to be_a(Hash)
-        expect(result).to have_key(:color_breakdown)
-        expect(result).to have_key(:summary)
-        expect(mock_calendar_repository).to have_received(:fetch_events).with(
-          start_date,
-          end_date
-        )
+        expect(result[:color_breakdown]).to eq({ '2' => 1 })
+        expect(result[:summary]).to eq({ total_events: 1, total_duration: 3600 })
       end
     end
 
     context 'when user is not authenticated' do
       before do
-        allow(mock_token_manager).to receive(:token_exist?).and_return(false)
+        allow(mock_token_repository).to receive(:token_exist?).and_return(false)
       end
 
       it 'should raise AuthenticationRequiredError' do
@@ -77,7 +83,7 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
 
     context 'when date parameters are invalid' do
       before do
-        allow(mock_token_manager).to receive(:token_exist?).and_return(true)
+        allow(mock_token_repository).to receive(:token_exist?).and_return(true)
       end
 
       context 'when dates are nil' do

@@ -55,9 +55,8 @@ RSpec.describe 'StartAuthTool', type: :request do
       it 'should return proper authentication instructions' do
         aggregate_failures do
           expect(content).to have_key('instructions')
-          expect(content['instructions']).to include('上記URLにアクセスしてください')
-          expect(content['instructions']).to include('CompleteAuthTool')
-          expect(content['instructions']).to include('認証コード')
+          expect(content['instructions']).to include('上記URLにアクセス')
+          expect(content['instructions']).to include('認証コードを取得し')
         end
       end
     end

@@ -297,7 +297,7 @@ lib/calendar_color_mcp/
 └── infrastructure/                  # Infrastructure層（最外層）
     ├── repositories/
     │   ├── google_calendar_repository.rb   # Google Calendar API実装
-    │   └── token_file_repository.rb        # トークンファイル管理
+    │   └── token_repository.rb             # トークンファイル管理（Phase 6でTokenManagerをここに移行）
     └── services/
         └── configuration_service.rb        # 設定管理サービス
     # デバッグログ装飾はgoogle_calendar_repository.rb内にGoogleCalendarRepositoryLogDecoratorとして統合
@@ -903,3 +903,627 @@ end
 - **段階的モジュール名前空間**: 各Phaseでレイヤー名前空間を段階的に導入
 
 この明示的レイヤー構造アプローチにより、**現在のコードベースの利点を活かしつつ**、**クリーンアーキテクチャの恩恵を物理的なディレクトリ構造で明確化し、段階的に享受**できます。各レイヤーの責任が明確になり、新規開発者でもアーキテクチャを直感的に理解できる構造を実現します。
+
+---
+
+## Phase 6: 認証アーキテクチャの改善
+
+### 🎯 目的
+- **GoogleCalendarAuthManagerの責務分離**: OAuth通信とビジネスロジックの明確な分離
+- **Singletonパターンの段階的除去**: テスト容易性と依存性注入の改善
+- **Infrastructure層への適切な配置**: OAuth API通信の責任明確化
+
+### 6.1 現在の認証アーキテクチャの問題分析
+
+#### 📋 GoogleCalendarAuthManagerの責務混在
+```ruby
+# lib/calendar_color_mcp/google_calendar_auth_manager.rb (現状)
+class GoogleCalendarAuthManager
+  include Singleton
+  
+  def get_auth_url
+    # 1. 設定値検証責任
+    # 2. OAuth URL生成責任  
+    # 3. 認証フロー管理責任
+  end
+  
+  def complete_auth_from_code(code)
+    # 1. トークン交換API呼び出し責任
+    # 2. トークン保存責任
+    # 3. エラーハンドリング責任
+  end
+  
+  def token_exist?
+    # TokenManagerへの委譲（責務不明確）
+  end
+end
+```
+
+**明確化された問題点**:
+- **責務混在**: OAuth API通信（Infrastructure）とビジネスロジック（Application）が混在
+- **Singleton制約**: テスト時の依存性注入が困難
+- **レイヤー責任不明確**: Infrastructure層の概念がない状態でのGoogle OAuth API通信
+- **認証Use Caseの未活用**: 既存のAuthentication Use Caseが実質的に未使用
+
+### 6.2 クリーンアーキテクチャ原則に基づく解決策
+
+#### Infrastructure::GoogleOAuthService（新規作成）
+```ruby
+# lib/calendar_color_mcp/infrastructure/services/google_oauth_service.rb
+module Infrastructure
+  class GoogleOAuthService
+    def initialize(config_service: ConfigurationService.instance)
+      @config_service = config_service
+      @oauth_client = build_oauth_client
+    end
+    
+    def generate_auth_url
+      @oauth_client.authorization_uri(
+        scope: ['https://www.googleapis.com/auth/calendar.readonly'],
+        access_type: 'offline',
+        approval_prompt: 'force'
+      ).to_s
+    rescue => e
+      raise Infrastructure::ExternalServiceError, "OAuth URL生成に失敗しました: #{e.message}"
+    end
+    
+    def exchange_code_for_token(auth_code)
+      @oauth_client.code = auth_code
+      @oauth_client.fetch_access_token!
+      @oauth_client
+    rescue => e
+      raise Infrastructure::ExternalServiceError, "トークン交換に失敗しました: #{e.message}"
+    end
+    
+    private
+    
+    def build_oauth_client
+      Signet::OAuth2::Client.new(
+        client_id: @config_service.google_client_id,
+        client_secret: @config_service.google_client_secret,
+        authorization_uri: 'https://accounts.google.com/o/oauth2/auth',
+        token_credential_uri: 'https://oauth2.googleapis.com/token',
+        redirect_uri: 'urn:ietf:wg:oauth:2.0:oob'
+      )
+    end
+  end
+end
+```
+
+**Infrastructure層配置の根拠**:
+- **外部サービス通信**: Google OAuth APIとの通信は技術的詳細
+- **設定依存**: ConfigurationServiceを活用した統一的な設定管理
+- **プロトコル固有**: OAuth 2.0プロトコルの実装詳細
+
+#### Application::AuthenticationUseCase（既存の強化）
+```ruby
+# lib/calendar_color_mcp/application/use_cases/authentication_use_case.rb
+module Application
+  class AuthenticationUseCase
+    def initialize(
+      oauth_service: Infrastructure::GoogleOAuthService.new,
+      token_repository: Infrastructure::TokenRepository.instance  # Singleton使用
+    )
+      @oauth_service = oauth_service
+      @token_repository = token_repository
+    end
+    
+    def start_authentication
+      auth_url = @oauth_service.generate_auth_url
+      
+      {
+        auth_url: auth_url,
+        instructions: "ブラウザでURLを開き、認証コードを取得してください"
+      }
+    rescue Infrastructure::ExternalServiceError => e
+      raise Application::AuthenticationError, "認証開始に失敗しました: #{e.message}"
+    end
+    
+    def complete_authentication(auth_code)
+      validate_auth_code(auth_code)
+      
+      credentials = @oauth_service.exchange_code_for_token(auth_code)
+      @token_repository.save_credentials(credentials)
+      
+      {
+        success: true,
+        message: "認証が完了しました"
+      }
+    rescue Infrastructure::ExternalServiceError => e
+      raise Application::AuthenticationError, "認証完了に失敗しました: #{e.message}"
+    rescue => e
+      raise Application::AuthenticationError, "予期しないエラーが発生しました: #{e.message}"
+    end
+    
+    def check_authentication_status
+      {
+        authenticated: @token_repository.token_exist?,
+        token_file_exists: File.exist?(@token_repository.instance_variable_get(:@token_file_path))
+      }
+    end
+    
+    private
+    
+    def validate_auth_code(auth_code)
+      if auth_code.nil? || auth_code.strip.empty?
+        raise Application::ValidationError, "認証コードが入力されていません"
+      end
+    end
+  end
+end
+```
+
+**Application層強化の根拠**:
+- **ビジネスフロー管理**: 認証開始→完了→状態確認の一連のワークフロー
+- **エラー変換**: Infrastructure層エラーをApplication層エラーに適切に変換
+- **TokenManager統合**: 既存のSingleton（適切な設計）との連携
+
+### 6.3 Interface Adapters層の改善
+
+#### Interface Adaptersツールの Use Case 使用への変更
+```ruby
+# lib/calendar_color_mcp/interface_adapters/tools/start_auth_tool.rb
+module InterfaceAdapters
+  class StartAuthTool < BaseTool
+    def call(**context)
+      use_case = Application::AuthenticationUseCase.new
+      result = use_case.start_authentication
+      
+      success_response({
+        message: "認証プロセスを開始しました",
+        auth_url: result[:auth_url],
+        instructions: result[:instructions]
+      })
+    rescue Application::AuthenticationError => e
+      error_response("認証開始エラー: #{e.message}")
+    rescue => e
+      logger.error "Unexpected error in start_auth: #{e.message}"
+      error_response("認証開始時に予期しないエラーが発生しました")
+    end
+  end
+end
+
+# lib/calendar_color_mcp/interface_adapters/tools/check_auth_status_tool.rb
+module InterfaceAdapters
+  class CheckAuthStatusTool < BaseTool
+    def call(**context)
+      use_case = Application::AuthenticationUseCase.new
+      result = use_case.check_authentication_status
+      
+      success_response({
+        authenticated: result[:authenticated],
+        token_file_exists: result[:token_file_exists],
+        status_message: build_status_message(result)
+      })
+    rescue Application::AuthenticationError => e
+      error_response("認証状態確認エラー: #{e.message}")
+    rescue => e
+      logger.error "Unexpected error in check_auth_status: #{e.message}"
+      error_response("認証状態確認時に予期しないエラーが発生しました")
+    end
+    
+    private
+    
+    def build_status_message(result)
+      if result[:authenticated]
+        "認証済みです"
+      else
+        "認証が必要です。start_authを実行してください"
+      end
+    end
+  end
+end
+```
+
+**Interface Adapters改善の根拠**:
+- **Controller的役割**: MCPプロトコルからUse Caseへの変換のみ
+- **統一的エラーハンドリング**: Application層エラーのMCPレスポンス変換
+- **依存性の明確化**: Use Caseへの依存をコンストラクタで明示
+
+### 6.4 server.rbでの依存性注入の改善
+
+#### server_contextの更新（TokenRepositoryへの移行）
+```ruby
+# lib/calendar_color_mcp/server.rb (該当部分の更新)
+def setup_server_context
+  oauth_service = Infrastructure::GoogleOAuthService.new
+  calendar_repository = Infrastructure::GoogleCalendarRepositoryLogDecorator.new(
+    Infrastructure::GoogleCalendarRepository.new
+  )
+  
+  {
+    oauth_service: oauth_service,                                    # 新規追加
+    calendar_repository: calendar_repository,
+    token_repository: Infrastructure::TokenRepository.instance      # TokenManagerから移行（適切なSingleton）
+    # auth_manager: GoogleCalendarAuthManagerは段階的に削除
+  }
+end
+```
+
+**server.rb改善の根拠**:
+- **Infrastructure層統一**: OAuth通信もRepository層と同様の注入方式
+- **TokenManager維持**: 適切なSingletonとして継続（ファイル管理の一意性）
+- **段階的移行**: 既存機能を維持しながらの安全な移行
+
+### 6.5 段階的移行戦略
+
+#### 移行フェーズ
+1. **Infrastructure::GoogleOAuthService作成**: OAuth API通信の分離
+2. **Application::AuthenticationUseCase強化**: ビジネスロジックの統合
+3. **Interface Adaptersの段階的更新**: ツール単位での移行
+4. **server.rbからの段階的除去**: 依存関係の段階的切り替え
+5. **テスト更新**: 新アーキテクチャでのテスト実装
+6. **GoogleCalendarAuthManager完全削除**: 最終的な旧コード除去
+
+#### 影響範囲の明確化
+```ruby
+# 現在GoogleCalendarAuthManagerを使用している箇所（移行対象）
+# - StartAuthTool: Use Case使用に変更
+# - CheckAuthStatusTool: Use Case使用に変更
+# - AnalyzeCalendarTool: 認証エラー時のauth_url取得方法変更
+# - server.rb: server_context設定から除去
+```
+
+**移行戦略の利点**:
+- **漸進的変更**: 一度に全体を変更せず、段階的な安全な移行
+- **機能保持**: 既存機能を維持しながらのアーキテクチャ改善
+- **テスト継続**: 各段階でテスト成功を維持
+
+### 6.6 認証フローでのエラー変換パターン
+
+#### レイヤー間エラー変換の明確化
+```ruby
+# Infrastructure → Application
+rescue Infrastructure::ExternalServiceError => e
+  raise Application::AuthenticationError, "認証プロセスで外部サービスエラー: #{e.message}"
+
+# Application → Interface Adapters  
+rescue Application::AuthenticationError => e
+  error_response("認証エラー: #{e.message}")
+rescue Application::ValidationError => e
+  error_response("入力エラー: #{e.message}")
+
+# Interface Adapters → MCP Response
+def error_response(message, **additional_data)
+  response_data = {
+    success: false,
+    error: message
+  }.merge(additional_data)
+
+  MCP::Tool::Response.new([{
+    type: "text", 
+    text: response_data.to_json
+  }])
+end
+```
+
+**エラー変換パターンの根拠**:
+- **責任分離**: 各層は自分の責任範囲のエラーのみ生成
+- **依存関係逆転**: 外層が内層のエラーを知り、適切に変換
+- **一貫性**: 全認証ツールで統一的なエラーハンドリング
+
+### 6.7 期待効果とアーキテクチャ整合性
+
+#### 責任分離の明確化
+- ✅ **OAuth API通信**: Infrastructure::GoogleOAuthService（技術的詳細）
+- ✅ **認証ビジネスロジック**: Application::AuthenticationUseCase（ワークフロー管理）
+- ✅ **トークン管理**: CalendarColorMCP::TokenManager（適切なSingleton維持）
+- ✅ **プロトコル変換**: InterfaceAdapters::*Tool（MCP変換のみ）
+
+#### クリーンアーキテクチャ整合性
+- ✅ **層間依存関係**: Application → Infrastructure（正しい方向）
+- ✅ **エラー変換**: Infrastructure → Application → Interface Adapters
+- ✅ **単一責任原則**: 各クラスが明確で独立した責任を持つ
+- ✅ **依存性注入**: Singletonからの脱却とテスト容易性向上
+
+#### 既存Use Caseの活用
+- ✅ **AuthenticationUseCase**: 実際のツールから使用される実用的な実装
+- ✅ **CheckAuthStatusUseCase**: CheckAuthStatusToolで活用
+- ✅ **統一的認証フロー**: 全認証関連ツールでの一貫したUse Case使用
+
+### 6.9 TokenManagerのInfrastructure層移行
+
+#### 📋 TokenManagerの現在の問題
+```ruby
+# lib/calendar_color_mcp/token_manager.rb (現状)
+class TokenManager
+  include Singleton
+  
+  def save_credentials(credentials)
+    # ファイルI/O操作（Infrastructure層の責任）
+  end
+  
+  def load_credentials
+    # 外部ライブラリ依存（Infrastructure層の責任）
+    config = Infrastructure::ConfigurationService.instance
+    credentials = Google::Auth::UserRefreshCredentials.new(...)
+  end
+end
+```
+
+**問題点**:
+- **技術的責任**: ファイルI/O、外部ライブラリ操作はInfrastructure層の責任
+- **設定サービス依存**: 既にInfrastructure::ConfigurationServiceを使用
+- **レイヤー責任不明確**: ルートレベル配置により層の責任が曖昧
+
+**Infrastructure層移行の根拠**:
+現在のTokenManagerは以下の理由でInfrastructure層に配置すべきです：
+
+1. **ファイルI/O操作**: `token.json`への読み書きは技術的詳細
+2. **外部ライブラリ依存**: `Google::Auth::UserRefreshCredentials`の操作
+3. **設定サービス統合**: `Infrastructure::ConfigurationService`との自然な連携
+4. **責任の明確化**: 認証トークンの永続化という技術的責任
+
+#### ✅ 解決策: Infrastructure::TokenRepositoryへの移行（Singletonパターン採用）
+
+```ruby
+# lib/calendar_color_mcp/infrastructure/repositories/token_repository.rb
+module Infrastructure
+  class TokenRepository
+    include Singleton  # ファイル安全性とトークン一意性のためSingleton採用
+    
+    def initialize
+      @config_service = ConfigurationService.instance
+      @token_file_path = build_token_file_path
+      @mutex = Mutex.new  # スレッドセーフティ確保
+    end
+    
+    def save_credentials(credentials)
+      @mutex.synchronize do
+        # 単一インスタンスによる安全なファイルI/O操作
+        token_data = {
+          access_token: credentials.access_token,
+          refresh_token: credentials.refresh_token,
+          expires_at: credentials.expires_at&.to_i,
+          saved_at: Time.now.to_i
+        }
+        File.write(@token_file_path, token_data.to_json)
+      end
+    end
+    
+    def load_credentials
+      return nil unless File.exist?(@token_file_path)
+      
+      token_data = JSON.parse(File.read(@token_file_path))
+      credentials = Google::Auth::UserRefreshCredentials.new(
+        client_id: @config_service.google_client_id,
+        client_secret: @config_service.google_client_secret,
+        refresh_token: token_data['refresh_token'],
+        access_token: token_data['access_token']
+      )
+      
+      if token_data['expires_at']
+        credentials.expires_at = Time.at(token_data['expires_at'])
+      end
+      
+      credentials
+    rescue JSON::ParserError, KeyError => e
+      logger.debug "Token file error: #{e.message}"
+      nil
+    end
+    
+    def token_exist?
+      !load_credentials.nil?
+    rescue
+      false
+    end
+    
+    def clear_credentials
+      @mutex.synchronize do
+        File.delete(@token_file_path) if File.exist?(@token_file_path)
+      end
+    end
+    
+    private
+    
+    def build_token_file_path
+      project_root = File.expand_path('../../../..', __FILE__)
+      File.join(project_root, 'token.json')
+    end
+  end
+end
+```
+
+#### 🎯 TokenRepositoryでのSingleton採用理由
+
+**1. ファイル競合の回避**
+```ruby
+# 複数インスタンスの場合の問題
+instance1 = Infrastructure::TokenRepository.new
+instance2 = Infrastructure::TokenRepository.new
+
+# 同時アクセスでファイル競合のリスク
+instance1.save_credentials(credentials_a)  # token.json書き込み
+instance2.save_credentials(credentials_b)  # 同時に書き込み → 競合！
+```
+
+**2. トークンの一意性保証**
+- OAuth2トークンは本質的にアプリケーション全体で**一意の状態**
+- 複数のTokenRepositoryインスタンスは論理的に矛盾
+- ファイルロック機構の複雑化を回避
+
+**3. MCPツール間での状態共有**
+```ruby
+# 全MCPツールで同じ認証状態を参照
+StartAuthTool    → token_repository.clear_credentials
+CompleteAuthTool → token_repository.save_credentials  
+AnalyzeCalendarTool → token_repository.load_credentials
+```
+
+**Infrastructure層配置の根拠**:
+- **ファイルI/O操作**: `token.json`への読み書きは技術的詳細
+- **外部ライブラリ依存**: `Google::Auth::UserRefreshCredentials`の操作
+- **設定サービス統合**: `Infrastructure::ConfigurationService`との自然な連携
+- **責任の明確化**: 認証トークンの永続化という技術的責任
+
+#### Phase 6でのTokenManager移行ステップ
+
+1. **Infrastructure::TokenRepository作成**（Singletonパターン）
+2. **Application::AuthenticationUseCase更新**: TokenRepositoryを注入
+3. **server.rbの依存性注入更新**: TokenRepositoryに変更
+4. **テスト更新**: 新アーキテクチャでのテスト実装（Singleton考慮）
+5. **TokenManager段階的廃止**: 旧コード除去
+
+#### 期待効果
+- ✅ **層の責任明確化**: Infrastructure層での適切な技術的責任
+- ✅ **依存性注入改善**: Singletonからの脱却とテスト容易性向上
+- ✅ **アーキテクチャ整合性**: クリーンアーキテクチャの原則遵守
+- ✅ **設定管理統一**: ConfigurationServiceとの一元的な連携
+
+### 6.10 GoogleCalendarRepositoryのDomainオブジェクト変換
+
+#### 📋 現在のClean Architecture違反問題
+
+```ruby
+# lib/calendar_color_mcp/infrastructure/repositories/google_calendar_repository.rb:28 (現状)
+def fetch_events(start_date, end_date)
+  # Google Calendar API呼び出し
+  response = @service.list_events(...)
+  
+  # TODO:ここでdomainのオブジェクトに変換しなくていいのか？
+  response.items  # Google APIオブジェクトを直接返している
+end
+```
+
+**問題点**:
+- **Clean Architecture違反**: Infrastructure層がGoogle APIオブジェクトを直接返している
+- **Domain層のInfrastructure依存**: EventFilterServiceとTimeAnalysisServiceがGoogle API構造に依存
+- **レイヤー境界の不明確**: 外部APIの詳細がDomain層まで漏出
+
+#### ✅ 解決策: Infrastructure層でのDomain変換実装
+
+**1. Domain ValueObject作成**
+```ruby
+# lib/calendar_color_mcp/domain/entities/attendee.rb
+module Domain
+  class Attendee
+    attr_reader :email, :response_status, :self
+
+    def initialize(email:, response_status:, self: false)
+      @email = email
+      @response_status = response_status
+      @self = self
+    end
+
+    def accepted?
+      @response_status == 'accepted'
+    end
+  end
+end
+
+# lib/calendar_color_mcp/domain/entities/organizer.rb
+module Domain
+  class Organizer
+    attr_reader :email, :display_name, :self
+
+    def initialize(email:, display_name: nil, self: false)
+      @email = email
+      @display_name = display_name
+      @self = self
+    end
+  end
+end
+```
+
+**2. GoogleCalendarRepository変換メソッド追加**
+```ruby
+# lib/calendar_color_mcp/infrastructure/repositories/google_calendar_repository.rb
+module Infrastructure
+  class GoogleCalendarRepository
+    def fetch_events(start_date, end_date)
+      # Google Calendar API呼び出し
+      response = @service.list_events(...)
+
+      # Google API Event → Domain::CalendarEvent変換
+      response.items.map { |api_event| convert_to_domain_event(api_event) }
+    end
+
+    private
+
+    def convert_to_domain_event(api_event)
+      Domain::CalendarEvent.new(
+        summary: api_event.summary,
+        start_time: extract_start_time(api_event),
+        end_time: extract_end_time(api_event),
+        color_id: api_event.color_id&.to_i || Domain::ColorConstants::DEFAULT_COLOR_ID,
+        attendees: convert_attendees(api_event.attendees),
+        organizer: convert_organizer(api_event.organizer)
+      )
+    end
+
+    def extract_start_time(api_event)
+      if api_event.start.date_time
+        api_event.start.date_time
+      elsif api_event.start.date
+        Date.parse(api_event.start.date).to_time
+      end
+    end
+
+    def convert_attendees(api_attendees)
+      return [] unless api_attendees
+      
+      api_attendees.map do |api_attendee|
+        Domain::Attendee.new(
+          email: api_attendee.email,
+          response_status: api_attendee.response_status,
+          self: api_attendee.self || false
+        )
+      end
+    end
+  end
+end
+```
+
+**3. Domain層のGoogle API依存除去**
+```ruby
+# lib/calendar_color_mcp/domain/services/event_filter_service.rb
+module Domain
+  class EventFilterService
+    def apply_filters(events, color_filters, user_email)
+      # Domain::CalendarEventのメソッドを使用
+      attended_events = events.select { |event| event.attended_by?(user_email) }
+      filter_by_colors(attended_events, color_filters)
+    end
+  end
+end
+
+# lib/calendar_color_mcp/domain/services/time_analysis_service.rb  
+module Domain
+  class TimeAnalysisService
+    def calculate_duration(event)
+      # CalendarEventのduration_hoursメソッドを使用
+      event.duration_hours
+    end
+
+    def format_event_time(event)
+      # 統一化された時間フォーマット
+      if event.start_time
+        event.start_time.strftime('%Y-%m-%d %H:%M')
+      else
+        'Unknown time'
+      end
+    end
+  end
+end
+```
+
+#### Infrastructure層変換の根拠
+
+- **責任の明確化**: Infrastructure層は外部APIからDomainオブジェクトへの変換を担当
+- **依存関係逆転**: Domain層がInfrastructureの詳細から独立
+- **変更影響の局所化**: Google API変更時の影響をInfrastructure層に限定
+- **テスト容易性**: Domain層のテストでGoogle API依存が不要
+
+#### Application層への影響なし
+
+```ruby
+# lib/calendar_color_mcp/application/use_cases/analyze_calendar_use_case.rb
+def execute(start_date:, end_date:, color_filters: nil, user_email:)
+  # インターフェースは変わらず、内部でDomain::CalendarEvent配列を受け取る
+  events = @calendar_repository.fetch_events(parsed_start_date, parsed_end_date)
+  filtered_events = @filter_service.apply_filters(events, color_filters, user_email)
+  @analyzer_service.analyze(filtered_events)
+end
+```
+
+**Phase 6実装により**、GoogleCalendarAuthManagerとTokenManagerの責務分離に加えて、GoogleCalendarRepositoryのDomain変換実装により、クリーンアーキテクチャの原則に完全準拠した統合的なシステムが実現されます。これにより、Infrastructure層の技術的詳細がDomain層から完全に隠蔽され、長期的な保守性と拡張性が大幅に向上します。

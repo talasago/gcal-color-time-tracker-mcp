@@ -1,5 +1,6 @@
 require 'mcp'
 require_relative 'base_tool'
+require_relative '../../application/use_cases/authenticate_user_use_case'
 
 module InterfaceAdapters
   class CompleteAuthTool < BaseTool
@@ -20,29 +21,43 @@ module InterfaceAdapters
       def call(auth_code:, **context)
         logger.info "Completing authentication with provided code"
         logger.debug "Auth code provided: #{auth_code ? 'yes' : 'no'}"
-        
+
         begin
-          auth_manager = extract_auth_manager(context)
-        rescue ArgumentError => e
-          logger.error "Failed to extract auth manager: #{e.message}"
-          return error_response(e.message)
-        end
+          use_case = Application::AuthenticateUserUseCase.new(
+            oauth_service: extract_oauth_service(context),
+            token_repository: extract_token_repository(context)
+          )
+          result = use_case.complete_authentication(auth_code&.strip)
 
-        if auth_code.nil? || auth_code.strip.empty?
-          logger.error "No auth code provided"
-          return error_response("認証コードが指定されていません")
-        end
-
-        logger.debug "Processing authentication with code"
-        result = auth_manager.complete_auth(auth_code.strip)
-        
-        if result[:success]
           logger.info "Authentication completed successfully"
-        else
-          logger.error "Authentication failed: #{result[:error]}"
+          success_response(result)
+        rescue Application::ValidationError => e
+          logger.error "Validation error: #{e.message}"
+          error_response("入力エラー: #{e.message}")
+        rescue Application::AuthenticationError => e
+          logger.error "Authentication error: #{e.message}"
+          error_response("認証エラー: #{e.message}")
+        rescue => e
+          logger.error "Unexpected error occurred: #{e.message}"
+          logger.debug "Error details: #{e.backtrace&.first(5)&.join(', ')}"
+          error_response("認証完了時に予期しないエラーが発生しました")
         end
+      end
 
-        success_response(result)
+      private
+
+      def extract_oauth_service(context)
+        server_context = context[:server_context]
+        oauth_service = server_context&.dig(:oauth_service)
+
+        oauth_service || raise(InterfaceAdapters::DependencyInjectionError, "oauth_service not found in server_context")
+      end
+
+      def extract_token_repository(context)
+        server_context = context[:server_context]
+        token_repository = server_context&.dig(:token_repository)
+
+        token_repository || raise(InterfaceAdapters::DependencyInjectionError, "token_repository not found in server_context")
       end
     end
   end

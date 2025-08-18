@@ -15,14 +15,14 @@ RSpec.describe 'CompleteAuthTool', type: :request do
   describe 'complete_auth_tool execution' do
     context 'when auth code is valid (mocked)' do
       include_context 'authenticated user'
-      
+
       before do
         allow(mock_auth_manager).to receive(:complete_auth).and_return({
           success: true,
           message: "認証が完了しました"
         })
       end
-      
+
       it 'handles valid auth code' do
 
         # Call tool directly with mocked context
@@ -65,7 +65,7 @@ RSpec.describe 'CompleteAuthTool', type: :request do
 
         expect(content['success']).to be false
         # Specific error message defined in implementation
-        expect(content['error']).to eq('認証コードが指定されていません')
+        expect(content['error']).to eq('入力エラー: 認証コードが入力されていません')
       end
     end
   end

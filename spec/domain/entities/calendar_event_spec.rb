@@ -77,7 +77,7 @@ describe Domain::CalendarEvent do
     let(:user_email) { 'test@example.com' }
 
     context 'when user is organizer' do
-      let(:organizer) { double(self: true) }
+      let(:organizer) { double('organizer', self?: true) }
 
       it 'should return true' do
         expect(event.attended_by?(user_email)).to be true
@@ -87,7 +87,7 @@ describe Domain::CalendarEvent do
     context 'when event is private (no attendees)' do
       # TODO: Googleカレンダーの仕様上、参加者がいるイベントは基本的にプライベートではないらしい。ほんとか？
       let(:attendees) { nil }
-      let(:organizer) { double(self: false) }
+      let(:organizer) { double('organizer', self?: false) }
 
       it 'should return true' do
         expect(event.attended_by?(user_email)).to be true
@@ -97,7 +97,7 @@ describe Domain::CalendarEvent do
     context 'when event is private (empty attendees)' do
       # TODO: Googleカレンダーの仕様上、参加者がいるイベントは基本的にプライベートではないらしい。ほんとか？
       let(:attendees) { [] }
-      let(:organizer) { double(self: false) }
+      let(:organizer) { double('organizer', self?: false) }
 
       it 'should return true' do
         expect(event.attended_by?(user_email)).to be true
@@ -105,13 +105,13 @@ describe Domain::CalendarEvent do
     end
 
     context 'with attendees' do
-      let(:organizer) { double(self: false) }
+      let(:organizer) { double('organizer', self?: false) }
 
       context 'when user accepted invitation' do
         let(:attendees) do
           [
-            double(email: user_email, self: true, accepted?: true),
-            double(email: 'other@example.com', self: false, accepted?: true)
+            double('attendee1', email: user_email, self?: true, accepted?: true),
+            double('attendee2', email: 'other@example.com', self?: false, accepted?: true)
           ]
         end
 
@@ -123,7 +123,7 @@ describe Domain::CalendarEvent do
       context 'when user declined invitation' do
         let(:attendees) do
           [
-            double(email: user_email, self: true, accepted?: false)
+            double('attendee', email: user_email, self?: true, accepted?: false)
           ]
         end
 
@@ -135,7 +135,7 @@ describe Domain::CalendarEvent do
       context 'when user is not in attendees list' do
         let(:attendees) do
           [
-            double(email: 'other@example.com', self: false, accepted?: true)
+            double('attendee', email: 'other@example.com', self?: false, accepted?: true)
           ]
         end
 
@@ -147,7 +147,7 @@ describe Domain::CalendarEvent do
       context 'when attendee has self flag but different email' do
         let(:attendees) do
           [
-            double(email: 'different@example.com', self: true, accepted?: true)
+            double('attendee', email: 'different@example.com', self?: true, accepted?: true)
           ]
         end
 
