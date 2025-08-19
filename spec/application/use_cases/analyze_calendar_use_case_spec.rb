@@ -1,5 +1,6 @@
 require 'spec_helper'
 require_relative '../../../lib/calendar_color_mcp/application/use_cases/analyze_calendar_use_case'
+require_relative '../../support/event_factory'
 
 RSpec.describe Application::AnalyzeCalendarUseCase do
   let(:mock_calendar_repository) { instance_double('Infrastructure::GoogleCalendarRepository') }
@@ -19,17 +20,21 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
   let(:start_date) { Date.parse('2024-01-01') }
   let(:end_date) { Date.parse('2024-01-31') }
   let(:user_email) { 'test@example.com' }
-  let(:mock_event) do
-    double('event',
-      summary: 'Test Event',
-      color_id: '2',
-      start: double('start', date_time: Time.parse('2024-01-01 10:00:00'), date: nil),
-      end: double('end', date_time: Time.parse('2024-01-01 11:00:00'), date: nil),
-      attendees: nil,
-      organizer: double('organizer', self: true)
-    ).tap do |event|
-      allow(event).to receive(:attended_by?).with(user_email).and_return(true)
-    end
+  let(:green_event) do
+    EventFactory.timed_event(
+      summary: 'Green Event',
+      color_id: EventFactory::GREEN,
+      start_time: DateTime.new(2024, 1, 1, 10, 0, 0),
+      duration_hours: 1.0
+    )
+  end
+  let(:blue_event) do
+    EventFactory.timed_event(
+      summary: 'Blue Event',
+      color_id: EventFactory::BLUE,
+      start_time: DateTime.new(2024, 1, 2, 14, 0, 0),
+      duration_hours: 2.0
+    )
   end
 
   let(:mock_analysis_result) do
@@ -39,19 +44,14 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
     }
   end
 
-  describe '#initialize' do
-    it 'should initialize with dependencies' do
-      expect(use_case).to be_a(Application::AnalyzeCalendarUseCase)
-    end
-  end
 
   describe '#execute' do
     context 'when user is authenticated' do
       before do
         allow(mock_token_repository).to receive(:token_exist?).and_return(true)
-        allow(mock_calendar_repository).to receive(:fetch_events).and_return([mock_event])
+        allow(mock_calendar_repository).to receive(:fetch_events).and_return([green_event])
         allow(mock_calendar_repository).to receive(:get_user_email).and_return(user_email)
-        allow(mock_filter_service).to receive(:apply_filters).and_return([mock_event])
+        allow(mock_filter_service).to receive(:apply_filters).and_return([green_event])
         allow(mock_analyzer_service).to receive(:analyze).and_return(mock_analysis_result)
       end
 
@@ -61,8 +61,72 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
           end_date: end_date,
         )
 
-        expect(result[:color_breakdown]).to eq({ '2' => 1 })
-        expect(result[:summary]).to eq({ total_events: 1, total_duration: 3600 })
+        aggregate_failures do
+          expect(result[:color_breakdown]).to eq({ '2' => 1 })
+          expect(result[:summary]).to eq({ total_events: 1, total_duration: 3600 })
+          expect(result[:parsed_start_date]).to eq(start_date)
+          expect(result[:parsed_end_date]).to eq(end_date)
+        end
+      end
+
+      context 'color filters' do
+        let(:all_events) { [green_event, blue_event] }
+
+        before do
+          allow(mock_calendar_repository).to receive(:fetch_events).and_return(all_events)
+        end
+
+        it 'should return filtered events when include_colors is specified' do
+          allow(mock_filter_service).to receive(:apply_filters).and_return([green_event])
+          allow(mock_analyzer_service).to receive(:analyze).with([green_event]).and_return({
+            color_breakdown: { EventFactory::GREEN.to_s => 1 },
+            summary: { total_events: 1, total_duration: 3600 }
+          })
+
+          result = use_case.execute(
+            start_date: start_date,
+            end_date: end_date,
+            include_colors: [EventFactory::GREEN, "緑"]
+          )
+
+          expect(result[:color_breakdown]).to eq({ EventFactory::GREEN.to_s => 1 })
+          expect(result[:summary][:total_events]).to eq(1)
+        end
+
+        it 'should return all events when no color filters are provided' do
+          allow(mock_filter_service).to receive(:apply_filters).and_return(all_events)
+          allow(mock_analyzer_service).to receive(:analyze).with(all_events).and_return({
+            color_breakdown: { EventFactory::GREEN.to_s => 1, EventFactory::BLUE.to_s => 1 },
+            summary: { total_events: 2, total_duration: 10800 }
+          })
+
+          # Act
+          result = use_case.execute(
+            start_date: start_date,
+            end_date: end_date
+          )
+
+          expect(result[:summary][:total_events]).to eq(2)
+          expect(result[:color_breakdown]).to have_key(EventFactory::GREEN.to_s)
+          expect(result[:color_breakdown]).to have_key(EventFactory::BLUE.to_s)
+        end
+
+        it 'should return filtered events when exclude_colors is specified' do
+          allow(mock_filter_service).to receive(:apply_filters).and_return([green_event])
+          allow(mock_analyzer_service).to receive(:analyze).with([green_event]).and_return({
+            color_breakdown: { EventFactory::GREEN.to_s => 1 },
+            summary: { total_events: 1, total_duration: 3600 }
+          })
+
+          result = use_case.execute(
+            start_date: start_date,
+            end_date: end_date,
+            exclude_colors: [EventFactory::BLUE, "青"]
+          )
+
+          expect(result[:color_breakdown]).to eq({ EventFactory::GREEN.to_s => 1 })
+          expect(result[:color_breakdown]).not_to have_key(EventFactory::BLUE.to_s)
+        end
       end
     end
 

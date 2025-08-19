@@ -50,27 +50,23 @@ module InterfaceAdapters
         logger.debug "Parameters: include_colors=#{include_colors}, exclude_colors=#{exclude_colors}"
 
         begin
-          # 1. パラメータ変換
-          parsed_start_date = Date.parse(start_date)
-          parsed_end_date = Date.parse(end_date)
-          color_filters = build_color_filters(include_colors, exclude_colors)
-
           use_case = Application::AnalyzeCalendarUseCase.new(
             calendar_repository: extract_calendar_repository(context),
             token_repository: extract_token_repository(context)
           )
 
           result = use_case.execute(
-            start_date: parsed_start_date,
-            end_date: parsed_end_date,
-            color_filters: color_filters,
+            start_date: start_date,
+            end_date: end_date,
+            include_colors: include_colors,
+            exclude_colors: exclude_colors,
           )
 
           success_response({
             period: {
-              start_date: parsed_start_date.to_s,
-              end_date: parsed_end_date.to_s,
-              days: (parsed_end_date - parsed_start_date).to_i + 1
+              start_date: result[:parsed_start_date].to_s,
+              end_date: result[:parsed_end_date].to_s,
+              days: (result[:parsed_end_date] - result[:parsed_start_date]).to_i + 1
             },
             color_filter: build_filter_summary(include_colors, exclude_colors),
             analysis: result[:color_breakdown],
@@ -107,16 +103,6 @@ module InterfaceAdapters
       end
 
       private
-
-      # これユースケースの責務かも
-      def build_color_filters(include_colors, exclude_colors)
-        return nil unless include_colors || exclude_colors
-
-        filters = {}
-        filters[:include_colors] = include_colors if include_colors
-        filters[:exclude_colors] = exclude_colors if exclude_colors
-        filters
-      end
 
       def build_filter_summary(include_colors, exclude_colors)
         {

@@ -21,17 +21,31 @@ module Application
       @analyzer_service = analyzer_service
     end
 
-    def execute(start_date:, end_date:, color_filters: nil, user_email: nil)
+    def execute(start_date:, end_date:, include_colors: nil, exclude_colors: nil)
       parsed_start_date, parsed_end_date = validate_and_parse_dates(start_date, end_date)
       ensure_authenticated
+      color_filters = build_color_filters(include_colors, exclude_colors)
+
       events = @calendar_repository.fetch_events(parsed_start_date, parsed_end_date)
       filtered_events = @filter_service.apply_filters(events, color_filters, get_user_email)
-      @analyzer_service.analyze(filtered_events)
+      @analyzer_service.analyze(filtered_events).merge(
+        parsed_start_date: parsed_start_date,
+        parsed_end_date: parsed_end_date
+      )
     rescue Application::AuthenticationRequiredError => e
       raise Application::AuthenticationRequiredError, e.message
     end
 
     private
+
+    def build_color_filters(include_colors, exclude_colors)
+      return nil unless include_colors || exclude_colors
+
+      filters = {}
+      filters[:include_colors] = include_colors if include_colors
+      filters[:exclude_colors] = exclude_colors if exclude_colors
+      filters
+    end
 
     def ensure_authenticated
       unless @token_repository.token_exist?
