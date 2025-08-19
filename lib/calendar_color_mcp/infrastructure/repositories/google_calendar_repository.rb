@@ -30,7 +30,7 @@ module Infrastructure
 
       # Google API Event → Domain::CalendarEvent変換
       response.items.map { |api_event| convert_to_domain_event(api_event) }
-    rescue Google::Apis::AuthorizationError => e
+    rescue Google::Apis::AuthorizationError, Application::AuthenticationRequiredError => e
       raise Application::AuthenticationRequiredError, "認証エラー: #{e.message}"
     rescue Google::Apis::ClientError, Google::Apis::ServerError => e
       raise Infrastructure::ExternalServiceError, "カレンダーAPIエラー: #{e.message}"
@@ -38,7 +38,7 @@ module Infrastructure
       raise Infrastructure::ExternalServiceError, "カレンダーイベントの取得に失敗しました: #{e.message}"
     end
 
-    # NOTE: TODO: そもそもpublicメソッド？？にする必要があるのか？
+    # NOTE: TODO:
     # 1. calendar_infoがnilになるケース: 通常は認証済みであれば発生しませんが、API仕様上は可能性があります
     # . calendar_info.idがnilになるケース: カレンダー情報は取得できてもIDフィールドが空の場合があります
     def get_user_email
@@ -52,13 +52,12 @@ module Infrastructure
       raise Infrastructure::ExternalServiceError, "ユーザーメール取得エラー: #{e.message}"
     end
 
-    # TODO: そもそもpublicメソッド？？にする必要があるのか？
+    private
+
     def authorize
       credentials = load_credentials
       set_authorization(credentials)
     end
-
-    private
 
     def load_credentials
       begin
