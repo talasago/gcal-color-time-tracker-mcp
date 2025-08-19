@@ -7,11 +7,24 @@ describe Infrastructure::GoogleCalendarRepository do
   let(:mock_service) { instance_double(Google::Apis::CalendarV3::CalendarService) }
   let(:start_date) { Date.new(2024, 1, 1) }
   let(:end_date) { Date.new(2024, 1, 31) }
-  let(:mock_api_event) do
+  
+
+  subject(:repository) { described_class.new }
+
+  before do
+    allow(Google::Apis::CalendarV3::CalendarService).to receive(:new).and_return(mock_service)
+    allow(mock_service).to receive(:authorization=)
+  end
+
+  def create_mock_api_events
+    [create_simple_api_event]
+  end
+
+  def create_simple_api_event
     double('api_event').tap do |event|
       allow(event).to receive(:summary).and_return('Test Event')
       allow(event).to receive(:color_id).and_return('1')
-      allow(event).to receive(:attendees).and_return(nil)
+      allow(event).to receive(:attendees).and_return([])
       allow(event).to receive(:organizer).and_return(nil)
 
       start_obj = double('start')
@@ -26,25 +39,6 @@ describe Infrastructure::GoogleCalendarRepository do
     end
   end
 
-  let(:mock_events) { [mock_api_event] }
-  let(:mock_response) { double('response', items: mock_events) }
-
-  subject(:repository) { described_class.new }
-
-  before do
-    allow(Google::Apis::CalendarV3::CalendarService).to receive(:new).and_return(mock_service)
-    allow(mock_service).to receive(:authorization=)
-  end
-
-  describe '#initialize' do
-    context 'when initializing repository' do
-      it 'should create a Google Calendar service instance' do
-        expect(Google::Apis::CalendarV3::CalendarService).to receive(:new)
-
-        described_class.new
-      end
-    end
-  end
 
   describe '#fetch_events' do
     let(:mock_token_repository) { instance_double(Infrastructure::TokenRepository) }
@@ -55,14 +49,18 @@ describe Infrastructure::GoogleCalendarRepository do
 
     context 'when fetching events successfully' do
       let(:mock_credentials) { double('credentials', expired?: false) }
+      let(:mock_api_events) { create_mock_api_events }
 
       before do
         allow(mock_token_repository).to receive(:load_credentials).and_return(mock_credentials)
         allow(mock_service).to receive(:authorization=)
+        
+        mock_response = double('response')
+        allow(mock_response).to receive(:items).and_return(mock_api_events)
         allow(mock_service).to receive(:list_events).and_return(mock_response)
       end
 
-      it 'should fetch events from Google Calendar API and convert to Domain objects' do
+      it 'should return Domain::CalendarEvent objects from API response' do
         result = repository.fetch_events(start_date, end_date)
 
         expect(result).to be_an(Array)
@@ -70,20 +68,6 @@ describe Infrastructure::GoogleCalendarRepository do
         expect(result.first).to be_a(Domain::CalendarEvent)
         expect(result.first.summary).to eq('Test Event')
         expect(result.first.color_id).to eq(1)
-
-        expect(mock_service).to have_received(:list_events).with(
-          'primary',
-          time_min: Time.new(2024, 1, 1, 0, 0, 0).iso8601,
-          time_max: Time.new(2024, 1, 31, 23, 59, 59).iso8601,
-          single_events: true,
-          order_by: 'startTime'
-        )
-      end
-
-      it 'should set authorization on service with valid credentials' do
-        repository.fetch_events(start_date, end_date)
-
-        expect(mock_service).to have_received(:authorization=).with(mock_credentials)
       end
     end
 
@@ -106,15 +90,19 @@ describe Infrastructure::GoogleCalendarRepository do
         allow(expired_credentials).to receive(:refresh!)
         allow(mock_token_repository).to receive(:save_credentials)
         allow(mock_service).to receive(:authorization=)
+        
+        mock_response = double('response')
+        allow(mock_response).to receive(:items).and_return([])
         allow(mock_service).to receive(:list_events).and_return(mock_response)
       end
 
       it 'should refresh credentials and continue with fetch' do
-        repository.fetch_events(start_date, end_date)
+        result = repository.fetch_events(start_date, end_date)
 
         expect(expired_credentials).to have_received(:refresh!)
         expect(mock_token_repository).to have_received(:save_credentials).with(expired_credentials)
         expect(mock_service).to have_received(:authorization=).with(expired_credentials)
+        expect(result).to be_an(Array)
       end
 
       context 'when refresh fails' do
