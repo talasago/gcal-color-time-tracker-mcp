@@ -35,7 +35,7 @@ module Domain
           events: []
         }
 
-        duration = calculate_duration(event)
+        duration = event.duration_hours
         color_data[color_name][:total_hours] += duration
         color_data[color_name][:event_count] += 1
         color_data[color_name][:events] << {
@@ -56,47 +56,6 @@ module Domain
       color_data
     end
 
-    # TODO:計算はcalendar_event.rbのものを使えないのか？？
-    def calculate_duration(event)
-      logger.debug "--- Duration Calculation Debug ---"
-      logger.debug "Event: #{event.summary}"
-      logger.debug "start.date_time: #{event.start.date_time.inspect}"
-      logger.debug "start.date: #{event.start.date.inspect}"
-      logger.debug "end.date_time: #{event.end.date_time.inspect}"
-      logger.debug "end.date: #{event.end.date.inspect}"
-
-      duration = if event.start.date_time && event.end.date_time
-        duration_seconds = event.end.date_time - event.start.date_time
-        # Rationalを秒数に変換（1日 = 86400秒）
-        duration_seconds_float = duration_seconds * 86400
-        calculated_duration = duration_seconds_float / 3600.0
-        logger.debug "Type: Timed event"
-        logger.debug "duration_seconds (Rational): #{duration_seconds}"
-        logger.debug "duration_seconds_float: #{duration_seconds_float} seconds"
-        logger.debug "calculated_duration: #{calculated_duration} hours"
-        calculated_duration
-      elsif event.start.date && event.end.date
-        # 終日イベント
-        start_date = Date.parse(event.start.date)
-        end_date = Date.parse(event.end.date)
-        calculated_duration = (end_date - start_date).to_i * 24.0
-        logger.debug "Type: All-day event"
-        logger.debug "start_date: #{start_date}"
-        logger.debug "end_date: #{end_date}"
-        logger.debug "Days: #{(end_date - start_date).to_i}"
-        logger.debug "calculated_duration: #{calculated_duration} hours"
-        calculated_duration
-      else
-        # その他（時間不明）
-        logger.debug "Type: Unknown time"
-        0.0
-      end
-
-      logger.debug "Final duration: #{duration} hours"
-      logger.debug "---"
-
-      duration
-    end
 
     def format_event_time(event)
       if event.start.date_time

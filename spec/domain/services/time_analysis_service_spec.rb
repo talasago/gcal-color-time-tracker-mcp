@@ -7,20 +7,38 @@ describe Domain::TimeAnalysisService do
   subject(:service) { described_class.new }
 
   def create_timed_event(summary, color_id, start_time, end_time)
+    start_obj = double(date_time: start_time, date: nil)
+    end_obj = double(date_time: end_time, date: nil)
+    
+    # duration_hoursの計算
+    duration_seconds = end_time - start_time
+    duration_seconds_float = duration_seconds * 86400
+    calculated_duration = duration_seconds_float / 3600.0
+    
     double('timed_event',
       summary: summary,
       color_id: color_id,
-      start: double(date_time: start_time, date: nil),
-      end: double(date_time: end_time, date: nil)
+      start: start_obj,
+      end: end_obj,
+      duration_hours: calculated_duration
     )
   end
 
   def create_all_day_event(summary, color_id, start_date, end_date)
+    start_obj = double(date_time: nil, date: start_date)
+    end_obj = double(date_time: nil, date: end_date)
+    
+    # duration_hoursの計算
+    start_parsed = Date.parse(start_date)
+    end_parsed = Date.parse(end_date)
+    calculated_duration = (end_parsed - start_parsed).to_i * 24.0
+    
     double('all_day_event',
       summary: summary,
       color_id: color_id,
-      start: double(date_time: nil, date: start_date),
-      end: double(date_time: nil, date: end_date)
+      start: start_obj,
+      end: end_obj,
+      duration_hours: calculated_duration
     )
   end
 
@@ -29,7 +47,8 @@ describe Domain::TimeAnalysisService do
       summary: summary,
       color_id: color_id,
       start: double(date_time: nil, date: nil),
-      end: double(date_time: nil, date: nil)
+      end: double(date_time: nil, date: nil),
+      duration_hours: 0.0
     )
   end
 
