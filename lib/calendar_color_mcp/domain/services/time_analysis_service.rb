@@ -58,10 +58,10 @@ module Domain
 
 
     def format_event_time(event)
-      if event.start.date_time
-        event.start.date_time.strftime('%Y-%m-%d %H:%M')
-      elsif event.start.date
-        "#{event.start.date} (All-day)"
+      if event.start_time.date_time
+        event.start_time.date_time.strftime('%Y-%m-%d %H:%M')
+      elsif event.start_time.date
+        "#{event.start_time.date} (All-day)"
       else
         'Unknown time'
       end
