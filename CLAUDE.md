@@ -96,6 +96,7 @@ bundle exec rspec spec/[test_file].rb       # 単一テストファイルを実�
 - `let`の遅延評価を使うことで、適切にコード量を減らす
 - `subject`を使用して、わかりやすくSUT（System Under Test）を表す
   - `subject`はAAAパターンの`Act`部分に相当できる
+  - `subject` は 各`describe`の下にメソッドごとに定義する
 
 #### RSpecによらない一般的なテストコードのルールについて
 - また、AAA（Arrange-Act-Assert）パターンに従って構造化する
