@@ -46,7 +46,7 @@ module Domain
 
 
     def color_name
-      Domain::ColorConstants::COLOR_NAMES[@color_id] || Domain::ColorConstants::COLOR_NAMES[Domain::ColorConstants::DEFAULT_COLOR_ID]
+      Domain::ColorConstants.color_name(@color_id) || Domain::ColorConstants.color_name(Domain::ColorConstants.default_color_id)
     end
 
     private

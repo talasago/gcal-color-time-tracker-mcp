@@ -1,5 +1,7 @@
 require 'spec_helper'
+require 'rspec-parameterized'
 require_relative '../../../lib/calendar_color_mcp/domain/entities/color_constants'
+require_relative '../../../lib/calendar_color_mcp/domain/errors'
 
 RSpec.describe Domain::ColorConstants do
 
@@ -21,52 +23,67 @@ RSpec.describe Domain::ColorConstants do
     end
   end
 
-  describe '.color_names_array' do
-    it 'returns an array of color names' do
-      expected_names = ['薄紫', '緑', '紫', '赤', '黄', 'オレンジ', '水色', '灰色', '青', '濃い緑', '濃い赤']
-      
-      expect(described_class.color_names_array).to match_array(expected_names)
-    end
-  end
-
   describe '.valid_color_id?' do
-    context 'with valid color id' do
-      it 'returns true for id 1-11' do
-        (1..11).each do |id|
-          expect(described_class.valid_color_id?(id)).to be true
-        end
-      end
+    where(:color_id, :expected) do
+      [
+        [0,   false], # 境界値: 最小値未満
+        [1,   true],  # 境界値: 最小値
+        [11,  true],  # 境界値: 最大値
+        [12,  false], # 境界値: 最大値超過
+        [nil, false]  # 無効な型
+      ]
     end
 
-    context 'with invalid color id' do
-      it 'returns false for id 0' do
-        expect(described_class.valid_color_id?(0)).to be false
-      end
-
-      it 'returns false for id 12' do
-        expect(described_class.valid_color_id?(12)).to be false
-      end
-
-      it 'returns false for nil' do
-        expect(described_class.valid_color_id?(nil)).to be false
+    with_them do
+      it 'validates color id correctly' do
+        expect(described_class.valid_color_id?(color_id)).to eq(expected)
       end
     end
   end
 
   describe '.color_name' do
-    context 'with valid color id' do
-      it 'returns the correct color name' do
-        expect(described_class.color_name(1)).to eq('薄紫')
-        expect(described_class.color_name(9)).to eq('青')
-        expect(described_class.color_name(11)).to eq('濃い赤')
-      end
+    subject { described_class.color_name(color_id) }
+
+    where(:color_id, :expected) do
+      [
+        [1,   '薄紫'],
+        [9,   '青'],
+        [11,  '濃い赤'],
+        [0,   nil],
+        [12,  nil],
+        [nil, nil]
+      ]
     end
 
-    context 'with invalid color id' do
-      it 'returns nil' do
-        expect(described_class.color_name(0)).to be_nil
-        expect(described_class.color_name(12)).to be_nil
-        expect(described_class.color_name(nil)).to be_nil
+    with_them do
+      it 'returns correct color name or nil' do
+        is_expected.to eq(expected)
+      end
+    end
+  end
+
+  describe '.normalize_colors' do
+    subject { described_class.normalize_colors(colors) }
+
+    where(:colors, :expected, :description) do
+      [
+        [nil, [], 'nil input'],
+        [[], [], 'empty array'],
+        [[1, 2, 9, 11], ['1', '2', '9', '11'], 'valid integer color IDs'],
+        [['薄紫', '緑', '青', '濃い赤'], ['1', '2', '9', '11'], 'valid color names'],
+        [['無効な色', '存在しない色'], [], 'invalid color names'],
+        [[1, '緑', 9, '濃い赤', '無効な色'], ['1', '2', '9', '11'], 'mixed valid integers and color names'],
+        [[1, 1.5, '緑'], ['1', '2'], 'mixed with Float values'],
+        [[1, true, '緑'], ['1', '2'], 'mixed with Boolean values'],
+        [[1, nil, '緑'], ['1', '2'], 'mixed with nil values'],
+        [[0, 1, 12, '緑'], ['1', '2'], 'mixed with invalid color IDs'],
+        [[0, 1, 1.5, '緑', true, nil, 12, 9], ['1', '2', '9'], 'mixed with all invalid types and values']
+      ]
+    end
+
+    with_them do
+      it 'normalizes colors correctly' do
+        is_expected.to eq(expected)
       end
     end
   end

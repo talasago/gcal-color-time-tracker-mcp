@@ -258,7 +258,7 @@ describe Domain::CalendarEvent do
       let(:color_id) { 99 }
 
       it 'should return default color name' do
-        expect(event.color_name).to eq(Domain::ColorConstants::COLOR_NAMES[Domain::ColorConstants::DEFAULT_COLOR_ID])
+        expect(event.color_name).to eq(Domain::ColorConstants.color_name(Domain::ColorConstants.default_color_id))
       end
     end
 
@@ -266,7 +266,7 @@ describe Domain::CalendarEvent do
       let(:color_id) { nil }
 
       it 'should return default color name' do
-        expect(event.color_name).to eq(Domain::ColorConstants::COLOR_NAMES[Domain::ColorConstants::DEFAULT_COLOR_ID])
+        expect(event.color_name).to eq(Domain::ColorConstants.color_name(Domain::ColorConstants.default_color_id))
       end
     end
   end

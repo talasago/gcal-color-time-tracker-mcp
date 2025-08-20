@@ -15,11 +15,11 @@ class EventFactory
     duration_hours: 1.0
   )
     end_time = start_time + (duration_hours / 24.0)
-    
+
     start_obj = RSpec::Mocks::Double.new('start')
     allow(start_obj).to receive(:date_time).and_return(start_time)
     allow(start_obj).to receive(:date).and_return(nil)
-    
+
     end_obj = RSpec::Mocks::Double.new('end')
     allow(end_obj).to receive(:date_time).and_return(end_time)
     allow(end_obj).to receive(:date).and_return(nil)
@@ -40,11 +40,11 @@ class EventFactory
   )
     end_date = Date.parse(start_date) + duration_days
     end_date_str = end_date.strftime('%Y-%m-%d')
-    
+
     start_obj = RSpec::Mocks::Double.new('start')
     allow(start_obj).to receive(:date_time).and_return(nil)
     allow(start_obj).to receive(:date).and_return(start_date)
-    
+
     end_obj = RSpec::Mocks::Double.new('end')
     allow(end_obj).to receive(:date_time).and_return(nil)
     allow(end_obj).to receive(:date).and_return(end_date_str)
@@ -64,7 +64,7 @@ class EventFactory
     start_obj = RSpec::Mocks::Double.new('start')
     allow(start_obj).to receive(:date_time).and_return(nil)
     allow(start_obj).to receive(:date).and_return(nil)
-    
+
     end_obj = RSpec::Mocks::Double.new('end')
     allow(end_obj).to receive(:date_time).and_return(nil)
     allow(end_obj).to receive(:date).and_return(nil)
@@ -79,12 +79,12 @@ class EventFactory
 
   # 色名から色IDを取得するヘルパーメソッド
   def self.color_id_by_name(color_name)
-    Domain::ColorConstants::NAME_TO_ID[color_name]
+    Domain::ColorConstants.name_to_id[color_name]
   end
 
   # よく使う色の定数
   LAVENDER = color_id_by_name('薄紫')  # 1
-  GREEN = color_id_by_name('緑')       # 2  
+  GREEN = color_id_by_name('緑')       # 2
   PURPLE = color_id_by_name('紫')      # 3
   RED = color_id_by_name('赤')         # 4
   YELLOW = color_id_by_name('黄')      # 5

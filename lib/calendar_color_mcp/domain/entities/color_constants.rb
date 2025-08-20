@@ -11,6 +11,12 @@ module Domain
     NAME_TO_ID = COLOR_NAMES.invert.freeze
     DEFAULT_COLOR_ID = 9
 
+    private_constant :COLOR_NAMES, :NAME_TO_ID, :DEFAULT_COLOR_ID
+
+    def self.color_names
+      COLOR_NAMES
+    end
+
     def self.name_to_id
       NAME_TO_ID
     end
@@ -29,6 +35,21 @@ module Domain
 
     def self.color_name(id)
       COLOR_NAMES[id]
+    end
+
+    def self.normalize_colors(colors)
+      return [] unless colors
+
+      colors.filter_map do |color|
+        case color
+        when Integer
+          valid_color_id?(color) ? color.to_s : nil
+        when String
+          NAME_TO_ID[color]&.to_s
+        else
+          nil
+        end
+      end
     end
   end
 end
