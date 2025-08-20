@@ -1,24 +1,14 @@
 require_relative '../errors'
-require_relative '../../infrastructure/repositories/token_repository'
-require_relative '../../infrastructure/repositories/google_calendar_repository'
 require_relative '../../domain/services/event_filter_service'
 require_relative '../../domain/services/time_analysis_service'
 
 module Application
   class AnalyzeCalendarUseCase
-    def initialize(
-      # FIXME: Infra層を知っているのは良くない
-      calendar_repository: Infrastructure::GoogleCalendarRepositoryLogDecorator.new(
-        Infrastructure::GoogleCalendarRepository.new
-      ),
-      token_repository: Infrastructure::TokenRepository.instance,
-      filter_service: Domain::EventFilterService.new,
-      analyzer_service: Domain::TimeAnalysisService.new
-    )
+    def initialize(calendar_repository:, token_repository:)
       @calendar_repository = calendar_repository
       @token_repository = token_repository
-      @filter_service = filter_service
-      @analyzer_service = analyzer_service
+      @filter_service = Domain::EventFilterService.new
+      @analyzer_service = Domain::TimeAnalysisService.new
     end
 
     def execute(start_date:, end_date:, include_colors: nil, exclude_colors: nil)
