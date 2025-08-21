@@ -11,19 +11,12 @@ module Infrastructure
     SCOPE = Google::Apis::CalendarV3::AUTH_CALENDAR_READONLY
     REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'  # OOB flow for CLI
 
-    # NOTE:引数必要かな？
-    def initialize(config_service: ConfigurationService.instance)
-      @config_service = config_service
+    def initialize
+      @config_service = ConfigurationService.instance
       @oauth_client = build_oauth_client
     end
 
     def generate_auth_url
-      # FIXME:必要な設定のチェックはinfraの他のクラスで任せる
-      if @config_service.google_client_id.nil? || @config_service.google_client_id.empty?
-        logger.error "Google client ID not set in configuration"
-        raise Infrastructure::ConfigurationError, "Google client ID not set in configuration"
-      end
-
       params = {
         'client_id' => @config_service.google_client_id,
         'redirect_uri' => REDIRECT_URI,
