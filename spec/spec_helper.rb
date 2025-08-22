@@ -2,6 +2,7 @@ require 'rspec'
 require 'rspec-parameterized'
 require 'dotenv/load'
 require_relative '../lib/calendar_color_mcp/logger_manager'
+require_relative '../lib/calendar_color_mcp/server'
 
 RSpec.configure do |config|
   # テスト環境でのログ抑制用環境変数を設定

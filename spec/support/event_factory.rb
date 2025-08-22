@@ -1,0 +1,224 @@
+# frozen_string_literal: true
+
+require 'date'
+require 'rspec/mocks'
+require_relative '../../lib/calendar_color_mcp/domain/entities/calendar_event'
+require_relative '../../lib/calendar_color_mcp/domain/entities/color_constants'
+
+class EventFactory
+  extend RSpec::Mocks::ExampleMethods
+
+  def self.timed_event(
+    summary: 'テストイベント',
+    color_id: Domain::ColorConstants::COLOR_NAMES[2], # 緑
+    start_time: DateTime.new(2025, 1, 1, 10, 0, 0),
+    duration_hours: 1.0
+  )
+    end_time = start_time + (duration_hours / 24.0)
+
+    start_obj = RSpec::Mocks::Double.new('start')
+    allow(start_obj).to receive(:date_time).and_return(start_time)
+    allow(start_obj).to receive(:date).and_return(nil)
+
+    end_obj = RSpec::Mocks::Double.new('end')
+    allow(end_obj).to receive(:date_time).and_return(end_time)
+    allow(end_obj).to receive(:date).and_return(nil)
+
+    Domain::CalendarEvent.new(
+      summary: summary,
+      start_time: start_obj,
+      end_time: end_obj,
+      color_id: color_id&.to_s
+    )
+  end
+
+  def self.all_day_event(
+    summary: '全日イベント',
+    color_id: Domain::ColorConstants::COLOR_NAMES[3], # 紫
+    start_date: '2025-01-01',
+    duration_days: 1
+  )
+    end_date = Date.parse(start_date) + duration_days
+    end_date_str = end_date.strftime('%Y-%m-%d')
+
+    start_obj = RSpec::Mocks::Double.new('start')
+    allow(start_obj).to receive(:date_time).and_return(nil)
+    allow(start_obj).to receive(:date).and_return(start_date)
+
+    end_obj = RSpec::Mocks::Double.new('end')
+    allow(end_obj).to receive(:date_time).and_return(nil)
+    allow(end_obj).to receive(:date).and_return(end_date_str)
+
+    Domain::CalendarEvent.new(
+      summary: summary,
+      start_time: start_obj,
+      end_time: end_obj,
+      color_id: color_id&.to_s
+    )
+  end
+
+  def self.unknown_time_event(
+    summary: '不明時間イベント',
+    color_id: Domain::ColorConstants::COLOR_NAMES[5] # 黄
+  )
+    start_obj = RSpec::Mocks::Double.new('start')
+    allow(start_obj).to receive(:date_time).and_return(nil)
+    allow(start_obj).to receive(:date).and_return(nil)
+
+    end_obj = RSpec::Mocks::Double.new('end')
+    allow(end_obj).to receive(:date_time).and_return(nil)
+    allow(end_obj).to receive(:date).and_return(nil)
+
+    Domain::CalendarEvent.new(
+      summary: summary,
+      start_time: start_obj,
+      end_time: end_obj,
+      color_id: color_id&.to_s
+    )
+  end
+
+  # 色名から色IDを取得するヘルパーメソッド
+  def self.color_id_by_name(color_name)
+    Domain::ColorConstants.name_to_id[color_name]
+  end
+
+  # よく使う色の定数
+  LAVENDER = color_id_by_name('薄紫')  # 1
+  GREEN = color_id_by_name('緑')       # 2
+  PURPLE = color_id_by_name('紫')      # 3
+  RED = color_id_by_name('赤')         # 4
+  YELLOW = color_id_by_name('黄')      # 5
+  ORANGE = color_id_by_name('オレンジ') # 6
+  CYAN = color_id_by_name('水色')      # 7
+  GRAY = color_id_by_name('灰色')      # 8
+  BLUE = color_id_by_name('青')        # 9
+  DARK_GREEN = color_id_by_name('濃い緑') # 10
+  DARK_RED = color_id_by_name('濃い赤')   # 11
+
+  # API応答モックオブジェクト作成メソッド
+  def self.simple_api_event(overrides = {})
+    defaults = {
+      summary: 'Test Event',
+      color_id: '1',
+      start_time: Time.parse('2024-01-01 10:00:00'),
+      end_time: Time.parse('2024-01-01 11:00:00'),
+      attendees: [],
+      organizer: nil
+    }
+    create_api_event(defaults.merge(overrides))
+  end
+
+  def self.api_event_with_attendees(overrides = {})
+    defaults = {
+      summary: 'Meeting with Attendees',
+      color_id: '2',
+      attendees: [accepted_attendee, declined_self_attendee],
+      organizer: organizer_not_self
+    }
+    simple_api_event(defaults.merge(overrides))
+  end
+
+  def self.api_event_with_nil_values(overrides = {})
+    defaults = {
+      summary: 'Event with nil values',
+      color_id: '3',
+      attendees: nil,
+      organizer: nil
+    }
+    simple_api_event(defaults.merge(overrides))
+  end
+
+  def self.all_day_api_event(overrides = {})
+    defaults = {
+      summary: 'All Day Event',
+      color_id: '4',
+      is_all_day: true,
+      start_time: Time.parse('2024-01-04 00:00:00'),
+      end_time: Time.parse('2024-01-05 00:00:00')
+    }
+    simple_api_event(defaults.merge(overrides))
+  end
+
+  def self.api_event_with_invalid_data(overrides = {})
+    defaults = {
+      summary: nil,
+      color_id: 'invalid',
+      attendees: [attendee_without_email],
+      organizer: organizer_without_email
+    }
+    simple_api_event(defaults.merge(overrides))
+  end
+
+  private
+
+  def self.create_api_event(attrs)
+    double('api_event').tap do |event|
+      allow(event).to receive(:summary).and_return(attrs[:summary])
+      allow(event).to receive(:color_id).and_return(attrs[:color_id])
+      allow(event).to receive(:attendees).and_return(attrs[:attendees])
+      allow(event).to receive(:organizer).and_return(attrs[:organizer])
+
+      if attrs[:is_all_day]
+        start_obj = double('start')
+        allow(start_obj).to receive(:date_time).and_return(nil)
+        allow(start_obj).to receive(:date).and_return(attrs[:start_time].to_date.to_s)
+        allow(event).to receive(:start).and_return(start_obj)
+
+        end_obj = double('end')
+        allow(end_obj).to receive(:date_time).and_return(nil)
+        allow(end_obj).to receive(:date).and_return(attrs[:end_time].to_date.to_s)
+        allow(event).to receive(:end).and_return(end_obj)
+      else
+        start_obj = double('start')
+        allow(start_obj).to receive(:date_time).and_return(attrs[:start_time])
+        allow(start_obj).to receive(:date).and_return(nil)
+        allow(event).to receive(:start).and_return(start_obj)
+
+        end_obj = double('end')
+        allow(end_obj).to receive(:date_time).and_return(attrs[:end_time])
+        allow(end_obj).to receive(:date).and_return(nil)
+        allow(event).to receive(:end).and_return(end_obj)
+      end
+    end
+  end
+
+  def self.accepted_attendee
+    double('attendee').tap do |attendee|
+      allow(attendee).to receive(:email).and_return('attendee1@example.com')
+      allow(attendee).to receive(:response_status).and_return('accepted')
+      allow(attendee).to receive(:self).and_return(false)
+    end
+  end
+
+  def self.declined_self_attendee
+    double('attendee').tap do |attendee|
+      allow(attendee).to receive(:email).and_return('attendee2@example.com')
+      allow(attendee).to receive(:response_status).and_return('declined')
+      allow(attendee).to receive(:self).and_return(true)
+    end
+  end
+
+  def self.attendee_without_email
+    double('attendee').tap do |attendee|
+      allow(attendee).to receive(:email).and_return(nil)
+      allow(attendee).to receive(:response_status).and_return('accepted')
+      allow(attendee).to receive(:self).and_return(false)
+    end
+  end
+
+  def self.organizer_not_self
+    double('organizer').tap do |organizer|
+      allow(organizer).to receive(:email).and_return('organizer@example.com')
+      allow(organizer).to receive(:display_name).and_return('Meeting Organizer')
+      allow(organizer).to receive(:self).and_return(false)
+    end
+  end
+
+  def self.organizer_without_email
+    double('organizer').tap do |organizer|
+      allow(organizer).to receive(:email).and_return(nil)
+      allow(organizer).to receive(:display_name).and_return('Invalid Organizer')
+      allow(organizer).to receive(:self).and_return(false)
+    end
+  end
+end

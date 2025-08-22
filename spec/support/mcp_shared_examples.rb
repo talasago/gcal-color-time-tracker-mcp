@@ -33,31 +33,6 @@ RSpec.shared_examples 'handles invalid parameters gracefully' do |tool_name|
   end
 end
 
-
-RSpec.shared_examples 'BaseTool inheritance' do |tool_class, auth_test_params = {}|
-  describe 'inheritance' do
-    it 'inherits from BaseTool' do
-      expect(tool_class).to be < CalendarColorMCP::BaseTool
-    end
-
-    it 'has access to inherited extract_auth_manager method' do
-      expect(tool_class.protected_methods).to include(:extract_auth_manager)
-    end
-
-    if auth_test_params.any?
-      it 'handles auth manager errors through inheritance' do
-        response = tool_class.call(**auth_test_params, server_context: {})
-        content = JSON.parse(response.content[0][:text])
-        
-        aggregate_failures do
-          expect(content['success']).to be false
-          expect(content['error']).to eq('認証マネージャーが利用できません')
-        end
-      end
-    end
-  end
-end
-
 module MCPSharedHelpers
   def expect_mcp_protocol_response(response, expected_id)
     aggregate_failures do

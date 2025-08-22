@@ -9,7 +9,7 @@ DEBUG=true ./bin/calendar-color-mcp  # デバッグログ付きで開始
 ```bash
 bundle exec rspec                           # 全テストを実行
 bundle exec rspec spec/mcp_standard_spec.rb # MCPプロトコルテストを実行
-bundle exec rspec spec/tool/                # 個別ツールテストを実行
+bundle exec rspec spec/interface_adapters/tool/ # 個別ツールテストを実行
 bundle exec rspec spec/integration/         # 統合テストを実行
 bundle exec rspec spec/[test_file].rb       # 単一テストファイルを実行
 ```
@@ -91,9 +91,12 @@ bundle exec rspec spec/[test_file].rb       # 単一テストファイルを実�
   - テスト内でif文を使用しない（代わりに`context`を使用して条件分岐を表現する） 
     - if文による分岐はテストの理解と保守を困難にするため
   - 同じインデントで`context`が5つ以上存在する場合、`rspec-parameterized `を使用してパラメータ駆動テストとする
+  - 1つの`describe`に複数の前回条件がある場合は、`context`を使用して分ける。
+    - 一方で、1つの`describe`に1つの`context`は冗長化するため不要
 - `let`の遅延評価を使うことで、適切にコード量を減らす
 - `subject`を使用して、わかりやすくSUT（System Under Test）を表す
   - `subject`はAAAパターンの`Act`部分に相当できる
+  - `subject` は 各`describe`の下にメソッドごとに定義する
 
 #### RSpecによらない一般的なテストコードのルールについて
 - また、AAA（Arrange-Act-Assert）パターンに従って構造化する
@@ -117,13 +120,13 @@ bundle exec rspec spec/[test_file].rb       # 単一テストファイルを実�
 ```
 spec/
 ├── mcp_standard_spec.rb           # MCPプロトコル標準準拠しているテスト
-├── tool/                          # 個別ツールの機能テスト
+├── interface_adapters/tool/       # 個別ツールの機能テスト
 ├── integration/                   # 複数MCPツール間のエンドツーエンドフローテスト
 ```
 
 ### テストカテゴリ
 
-#### ツール個別テスト（`spec/tool/`）
+#### ツール個別テスト（`spec/interface_adapters/tool/`）
 **目的**: 各MCPツールの機能を独立してテスト
 - **パラメータ検証**: 必須/オプションパラメータ、型チェック
 - **レスポンスフォーマット**: 一貫したJSON構造、エラーハンドリング

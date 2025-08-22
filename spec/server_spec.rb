@@ -11,12 +11,18 @@ describe CalendarColorMCP::Server do
 
     ENV['GOOGLE_CLIENT_ID'] = original_client_id
     ENV['GOOGLE_CLIENT_SECRET'] = original_client_secret
+    
+    # ConfigurationServiceのSingletonインスタンスをリセット（テスト間の分離）
+    begin
+      Infrastructure::ConfigurationService.send(:remove_instance_variable, :@singleton__instance__)
+    rescue NameError
+      # インスタンス変数が存在しない場合は無視
+    end
   end
 
   before do
     # モック設定: 外部依存を分離
-    allow(CalendarColorMCP::TokenManager).to receive(:instance).and_return(double('TokenManager'))
-    allow(CalendarColorMCP::GoogleCalendarAuthManager).to receive(:instance).and_return(double('GoogleCalendarAuthManager'))
+    allow(Infrastructure::TokenRepository).to receive(:instance).and_return(double('TokenRepository'))
   end
 
   describe '#initialize' do
