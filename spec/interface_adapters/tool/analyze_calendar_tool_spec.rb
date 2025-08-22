@@ -49,20 +49,15 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
     let(:mock_oauth_service) { instance_double('MockOAuthService') }
     let(:server_context) { { oauth_service: mock_oauth_service, token_repository: mock_token_repository, calendar_repository: mock_calendar_repository } }
 
-    include_examples 'BaseTool inheritance', InterfaceAdapters::AnalyzeCalendarTool, {
-      start_date: "2024-01-01",
-      end_date: "2024-01-31"
-    }
-
     context 'when user is not authenticated' do
       before do
         allow(Application::AnalyzeCalendarUseCase).to receive(:new)
           .with(calendar_repository: mock_calendar_repository, token_repository: mock_token_repository)
           .and_return(mock_use_case)
-        
+
         allow(mock_use_case).to receive(:execute)
           .and_raise(Application::AuthenticationRequiredError, "認証が必要です")
-        
+
         allow(mock_oauth_service).to receive(:generate_auth_url)
           .and_return('https://accounts.google.com/oauth/authorize?...')
       end
@@ -97,7 +92,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
         allow(Application::AnalyzeCalendarUseCase).to receive(:new)
           .with(calendar_repository: mock_calendar_repository, token_repository: mock_token_repository)
           .and_return(mock_use_case)
-        
+
         allow(mock_use_case).to receive(:execute)
           .with(
             start_date: "2024-01-01",

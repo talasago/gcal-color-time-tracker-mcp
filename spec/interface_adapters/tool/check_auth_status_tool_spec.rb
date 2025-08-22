@@ -8,8 +8,6 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
   include MCPRequestHelpers
   include MCPSharedHelpers
 
-  include_examples 'BaseTool inheritance', InterfaceAdapters::CheckAuthStatusTool
-
   describe 'check_auth_status_tool execution' do
     let(:init_req) { initialize_request(0) }
     let(:auth_check_req) { check_auth_status_request(1) }

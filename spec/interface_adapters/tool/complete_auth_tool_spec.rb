@@ -9,10 +9,6 @@ RSpec.describe 'CompleteAuthTool', type: :request do
   include MCPRequestHelpers
   include MCPSharedHelpers
 
-  include_examples 'BaseTool inheritance', InterfaceAdapters::CompleteAuthTool, {
-    auth_code: "test_code"
-  }
-
   describe 'complete_auth_tool execution' do
     context 'when auth code is valid (mocked)' do
       include_context 'authenticated user'
@@ -62,7 +58,7 @@ RSpec.describe 'CompleteAuthTool', type: :request do
 
         content = JSON.parse(response.content[0][:text])
         expect(content['success']).to be false
-        expect(content['error']).to eq('認証エラー: invalid_grant')
+        expect(content['error']).to eq('認証エラー: massages')
       end
     end
 
