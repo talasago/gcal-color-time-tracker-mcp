@@ -1,4 +1,4 @@
-# lib/配下の依存関係図
+w# lib/配下の依存関係図
 
 ```mermaid
 graph LR
@@ -25,12 +25,18 @@ graph LR
     CheckAuthTool --> AuthenticateUseCase
     CompleteAuthTool --> AuthenticateUseCase
     
-    %% Application Layer
-    AnalyzeUseCase --> GoogleCalendarRepo[infrastructure/repositories/google_calendar_repository.rb]
+    %% Application Layer (depends on abstractions via dependency injection)
+    AnalyzeUseCase --> CalendarRepoInterface{{calendar_repository interface}}
+    AnalyzeUseCase --> TokenRepoInterface{{token_repository interface}}
     AnalyzeUseCase --> TimeAnalysisService[domain/services/time_analysis_service.rb]
     AnalyzeUseCase --> EventFilterService[domain/services/event_filter_service.rb]
-    AuthenticateUseCase --> TokenRepo[infrastructure/repositories/token_repository.rb]
-    AuthenticateUseCase --> GoogleOAuthService[infrastructure/services/google_oauth_service.rb]
+    AuthenticateUseCase --> TokenRepoInterface
+    AuthenticateUseCase --> OAuthServiceInterface{{oauth_service interface}}
+    
+    %% Infrastructure implements interfaces (dependency injection)
+    GoogleCalendarRepo[infrastructure/repositories/google_calendar_repository.rb] -.-> CalendarRepoInterface
+    TokenRepo[infrastructure/repositories/token_repository.rb] -.-> TokenRepoInterface
+    GoogleOAuthService[infrastructure/services/google_oauth_service.rb] -.-> OAuthServiceInterface
     
     %% Domain Layer
     TimeAnalysisService --> ColorConstants[domain/entities/color_constants.rb]
@@ -66,6 +72,7 @@ graph LR
     classDef application fill:#fff3e0,color:#000
     classDef domain fill:#f3e5f5,color:#000
     classDef infrastructure fill:#ffe0b2,color:#000
+    classDef interfaces fill:#e1f5fe,stroke:#01579b,stroke-width:2px,stroke-dasharray: 5 5,color:#000
     classDef external fill:#fce4ec,color:#000
     
     class Main entryPoint
@@ -73,6 +80,7 @@ graph LR
     class AnalyzeUseCase,AuthenticateUseCase application
     class TimeAnalysisService,EventFilterService,CalendarEvent,ColorConstants,Attendee,Organizer domain
     class GoogleCalendarRepo,TokenRepo,GoogleOAuthService,ConfigurationService infrastructure
+    class CalendarRepoInterface,TokenRepoInterface,OAuthServiceInterface interfaces
     class MCP,GoogleAPI,FileSystem,HTTP,OAuth external
 ```
 
@@ -133,11 +141,18 @@ graph LR
 ### 主要な依存関係
 
 - **Clean Architectureパターン**: 依存関係は内側の層へのみ向かう
+- **依存性注入 (DI)**: Application層は抽象インターフェースに依存し、Infrastructure層の具象クラスが注入される
 - **Use Casesが中核**: アプリケーションのビジネスロジックを統括
-- **Repositoryパターン**: データアクセスを抽象化
+- **Repositoryパターン**: データアクセスを抽象化、インターフェースを通じて実装される
 - **Presenterパターン**: データ表示形式を責務分離
 - **Domain Services**: 複数エンティティにまたがるビジネスロジック
 - **横断的関心事の分離**: ログとエラー処理は各層で独立して管理
+
+### 図の記号説明
+
+- **実線の矢印 (→)**: 直接的な依存関係
+- **点線の矢印 (-.->)**: インターフェース実装（依存性注入）
+- **破線のボックス**: 抽象インターフェース（実際のコードには存在しないが、概念的な依存先）
 
 ### 外部依存
 
