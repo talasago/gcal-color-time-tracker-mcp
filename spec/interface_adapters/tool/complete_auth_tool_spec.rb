@@ -47,7 +47,7 @@ RSpec.describe 'CompleteAuthTool', type: :request do
 
         allow(mock_use_case).to receive(:complete_authentication)
           .with("invalid_code_123")
-          .and_raise(Application::AuthenticationError, "massages")
+          .and_raise(Application::AuthenticationError, "messages")
       end
 
       it 'handles invalid auth code' do
