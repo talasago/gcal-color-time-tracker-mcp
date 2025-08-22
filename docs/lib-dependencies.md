@@ -6,7 +6,6 @@ graph LR
     Main[calendar_color_mcp.rb] --> Server[server.rb]
     
     %% Server Dependencies
-    Server --> Loggable[loggable.rb]
     Server --> AnalyzeTool[interface_adapters/tools/analyze_calendar_tool.rb]
     Server --> StartAuthTool[interface_adapters/tools/start_auth_tool.rb]
     Server --> CheckAuthTool[interface_adapters/tools/check_auth_status_tool.rb]
@@ -53,20 +52,13 @@ graph LR
     GoogleOAuthService --> FileSystem[File System]
     ConfigurationService --> FileSystem
     
-    %% Logging System
-    Loggable --> LoggerManager[logger_manager.rb]
-    LoggerManager --> Logger[Ruby Logger]
-    
-    %% Error Handling
-    AnalyzeTool --> InterfaceErrors[interface_adapters/errors.rb]
-    AnalyzeUseCase --> ApplicationErrors[application/errors.rb]
-    TimeAnalysisService --> DomainErrors[domain/errors.rb]
-    GoogleCalendarRepo --> InfrastructureErrors[infrastructure/errors.rb]
+    %% Note: Logging system (loggable.rb, logger_manager.rb) and error classes (errors.rb) 
+    %% are omitted from this diagram for clarity as they are cross-cutting concerns
+    %% used throughout multiple layers
     
     %% External Dependencies
     GoogleAPI --> HTTP[HTTP Requests]
     GoogleAPI --> OAuth[OAuth 2.0]
-    Logger --> STDOUT[Standard Output]
     
     %% Styling
     classDef entryPoint fill:#e1f5fe,color:#000
@@ -74,8 +66,6 @@ graph LR
     classDef application fill:#fff3e0,color:#000
     classDef domain fill:#f3e5f5,color:#000
     classDef infrastructure fill:#ffe0b2,color:#000
-    classDef logging fill:#f1f8e9,color:#000
-    classDef errors fill:#ffebee,color:#000
     classDef external fill:#fce4ec,color:#000
     
     class Main entryPoint
@@ -83,9 +73,7 @@ graph LR
     class AnalyzeUseCase,AuthenticateUseCase application
     class TimeAnalysisService,EventFilterService,CalendarEvent,ColorConstants,Attendee,Organizer domain
     class GoogleCalendarRepo,TokenRepo,GoogleOAuthService,ConfigurationService infrastructure
-    class Loggable,LoggerManager logging
-    class InterfaceErrors,ApplicationErrors,DomainErrors,InfrastructureErrors errors
-    class MCP,GoogleAPI,FileSystem,HTTP,OAuth,Logger,STDOUT external
+    class MCP,GoogleAPI,FileSystem,HTTP,OAuth external
 ```
 
 ## アーキテクチャ概要
@@ -132,10 +120,15 @@ graph LR
      - `google_oauth_service.rb` - Google OAuth実装
      - `configuration_service.rb` - 設定管理
 
-7. **共通層**:
-   - `loggable.rb` - ログ機能提供モジュール（mixin）
-   - `logger_manager.rb` - ログ管理クラス
-   - `errors.rb` - 各層のエラークラス群
+### 横断的関心事（図には含まれていない）
+
+以下のコンポーネントは複数の層で使用される横断的関心事のため、図の簡潔性を保つために省略されています：
+
+- **ログシステム**:
+  - `loggable.rb` - ログ機能提供モジュール（mixin）
+  - `logger_manager.rb` - ログ管理クラス
+- **エラー処理**:
+  - 各層の`errors.rb` - 層固有のエラークラス群
 
 ### 主要な依存関係
 
@@ -144,7 +137,7 @@ graph LR
 - **Repositoryパターン**: データアクセスを抽象化
 - **Presenterパターン**: データ表示形式を責務分離
 - **Domain Services**: 複数エンティティにまたがるビジネスロジック
-- **Error Handling**: 各層で適切なエラー境界を設定
+- **横断的関心事の分離**: ログとエラー処理は各層で独立して管理
 
 ### 外部依存
 
