@@ -93,7 +93,7 @@ module Infrastructure
         summary: api_event.summary,
         start_time: extract_start_time(api_event),
         end_time: extract_end_time(api_event),
-        color_id: api_event.color_id&.to_i || Domain::ColorConstants.default_color_id, # FIXME:これデフォルトを代入していいか？
+        color_id: api_event.color_id&.to_i || Domain::ColorConstants.default_color_id,
         attendees: convert_attendees(api_event.attendees),
         organizer: convert_organizer(api_event.organizer)
       )
