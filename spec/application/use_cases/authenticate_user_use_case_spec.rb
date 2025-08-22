@@ -70,11 +70,13 @@ RSpec.describe Application::AuthenticateUserUseCase do
         allow(mock_token_repository).to receive(:token_file_exists?).and_return(true)
       end
 
-      it 'should return authenticated status' do
+      it 'should return authenticated status with message and no auth URL' do
         result = use_case.check_authentication_status
 
         expect(result[:authenticated]).to be true
         expect(result[:token_file_exists]).to be true
+        expect(result[:message]).to eq("認証済みです")
+        expect(result[:auth_url]).to be_nil
       end
     end
 
@@ -82,13 +84,16 @@ RSpec.describe Application::AuthenticateUserUseCase do
       before do
         allow(mock_token_repository).to receive(:token_exist?).and_return(false)
         allow(mock_token_repository).to receive(:token_file_exists?).and_return(false)
+        allow(mock_oauth_service).to receive(:generate_auth_url).and_return('https://oauth.example.com/auth')
       end
 
-      it 'should return not authenticated status' do
+      it 'should return not authenticated status with message and auth URL' do
         result = use_case.check_authentication_status
 
         expect(result[:authenticated]).to be false
         expect(result[:token_file_exists]).to be false
+        expect(result[:message]).to eq("認証が必要です。start_authを実行してください")
+        expect(result[:auth_url]).to eq('https://oauth.example.com/auth')
       end
     end
   end

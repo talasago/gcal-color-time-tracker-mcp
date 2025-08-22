@@ -45,10 +45,19 @@ module Application
     end
 
     def check_authentication_status
+      authenticated = @token_repository.token_exist?
+      token_file_exists = @token_repository.token_file_exists?
+      
       {
-        authenticated: @token_repository.token_exist?,
-        token_file_exists: @token_repository.token_file_exists?
+        authenticated: authenticated,
+        token_file_exists: token_file_exists,
+        message: build_status_message(authenticated),
+        auth_url: authenticated ? nil : @oauth_service.generate_auth_url
       }
+    rescue Infrastructure::ExternalServiceError => e
+      raise Application::AuthenticationError, "認証状態確認に失敗しました: #{e.message}"
+    rescue => e
+      raise Application::AuthenticationError, "認証状態確認に失敗しました: #{e.message}"
     end
 
     private
@@ -56,6 +65,14 @@ module Application
     def validate_auth_code(auth_code)
       if auth_code.nil? || auth_code.to_s.strip.empty?
         raise Application::ValidationError, "認証コードが入力されていません"
+      end
+    end
+
+    def build_status_message(authenticated)
+      if authenticated
+        "認証済みです"
+      else
+        "認証が必要です。start_authを実行してください"
       end
     end
   end

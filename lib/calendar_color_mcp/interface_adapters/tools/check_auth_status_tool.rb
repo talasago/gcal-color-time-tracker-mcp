@@ -26,17 +26,7 @@ module InterfaceAdapters
 
           logger.debug "Authentication status: #{result[:authenticated] ? 'authenticated' : 'not authenticated'}"
 
-          response_data = {
-            authenticated: result[:authenticated],
-            token_file_exists: result[:token_file_exists],
-            message: build_status_message(result),
-            status_message: build_status_message(result)
-          }
-
-          # FIXME:use caseで出来ないのか知りたい。
-          response_data[:auth_url] = oauth_service.generate_auth_url unless result[:authenticated]
-
-          success_response(response_data)
+          success_response(result)
         rescue Application::AuthenticationError => e
           logger.error "Authentication error: #{e.message}"
           error_response("認証状態確認エラー: #{e.message}")
@@ -46,17 +36,6 @@ module InterfaceAdapters
           error_response("認証状態確認時に予期しないエラーが発生しました")
         end
       end
-
-      private
-
-      def build_status_message(result)
-        if result[:authenticated]
-          "認証済みです"
-        else
-          "認証が必要です。start_authを実行してください"
-        end
-      end
-
     end
   end
 end

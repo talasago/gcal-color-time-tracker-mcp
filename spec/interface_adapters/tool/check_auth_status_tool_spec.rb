@@ -57,7 +57,8 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
           expect(content['success']).to be true
           expect(content['authenticated']).to be true
           expect(content['message']).to eq('認証済みです')
-          expect(content).not_to have_key('auth_url')
+          expect(content['token_file_exists']).to be true
+          expect(content['auth_url']).to be_nil
         end
       end
     end
@@ -73,6 +74,7 @@ RSpec.describe 'CheckAuthStatusTool', type: :request do
           expect(content['success']).to be true
           expect(content['authenticated']).to be false
           expect(content['message']).to match(/認証が必要です/)
+          expect(content['token_file_exists']).to be false
           expect(content).to have_key('auth_url')
           expect(content['auth_url']).to start_with('https://accounts.google.com/oauth2/auth')
         end
