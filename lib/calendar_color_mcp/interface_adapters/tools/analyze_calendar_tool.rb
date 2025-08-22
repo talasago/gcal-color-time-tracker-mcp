@@ -4,6 +4,7 @@ require_relative '../../application/use_cases/analyze_calendar_use_case'
 require_relative '../../domain/entities/color_constants'
 require_relative '../errors'
 require_relative '../presenters/calendar_analysis_presenter'
+require_relative '../../application/errors'
 
 module InterfaceAdapters
   class AnalyzeCalendarTool < BaseTool

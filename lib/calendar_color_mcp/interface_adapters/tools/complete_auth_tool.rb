@@ -1,6 +1,7 @@
 require 'mcp'
 require_relative 'base_tool'
 require_relative '../../application/use_cases/authenticate_user_use_case'
+require_relative '../../application/errors'
 
 module InterfaceAdapters
   class CompleteAuthTool < BaseTool

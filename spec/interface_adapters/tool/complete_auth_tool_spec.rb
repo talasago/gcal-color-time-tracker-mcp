@@ -3,6 +3,7 @@ require_relative '../../support/mcp_request_helpers'
 require_relative '../../support/mcp_shared_examples'
 require_relative '../../support/mcp_shared_contexts'
 require_relative '../../../lib/calendar_color_mcp/interface_adapters/tools/complete_auth_tool'
+require_relative '../../../lib/calendar_color_mcp/application/errors'
 
 RSpec.describe 'CompleteAuthTool', type: :request do
   include MCPRequestHelpers
@@ -38,19 +39,30 @@ RSpec.describe 'CompleteAuthTool', type: :request do
     end
 
     context 'when auth code is invalid' do
+      let(:mock_use_case) { instance_double(Application::AuthenticateUserUseCase) }
+      let(:mock_oauth_service) { instance_double('MockOAuthService') }
+      let(:mock_token_repository) { instance_double('MockTokenRepository') }
+      let(:server_context) { { oauth_service: mock_oauth_service, token_repository: mock_token_repository } }
+
+      before do
+        allow(Application::AuthenticateUserUseCase).to receive(:new)
+          .with(oauth_service: anything, token_repository: anything)
+          .and_return(mock_use_case)
+
+        allow(mock_use_case).to receive(:complete_authentication)
+          .with("invalid_code_123")
+          .and_raise(Application::AuthenticationError, "massages")
+      end
+
       it 'handles invalid auth code' do
-        # Use an obviously invalid auth code
-        invalid_auth_code = "invalid_code_123"
+        response = InterfaceAdapters::CompleteAuthTool.call(
+          auth_code: "invalid_code_123",
+          server_context: server_context
+        )
 
-        init_req = initialize_request(0)
-        complete_auth_req = complete_auth_request(invalid_auth_code, 1)
-        responses = execute_mcp_requests([init_req, complete_auth_req])
-        response = responses[1]
-        content = parse_response_content(response)
-
+        content = JSON.parse(response.content[0][:text])
         expect(content['success']).to be false
-        # Expected error patterns for invalid auth code
-        expect(content['error']).to match(/Authentication.*failed|invalid_grant|Malformed/)
+        expect(content['error']).to eq('認証エラー: invalid_grant')
       end
     end
 

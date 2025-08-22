@@ -43,33 +43,11 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
   end
 
   describe 'authentication handling' do
-    let(:mock_oauth_service) do
-      instance_double('Infrastructure::GoogleOAuthService').tap do |mock|
-        allow(mock).to receive(:generate_auth_url).and_return('https://accounts.google.com/oauth/authorize?...')
-      end
-    end
-
-    let(:mock_token_repository) do
-      instance_double('Infrastructure::TokenRepository').tap do |mock|
-        allow(mock).to receive(:token_exist?).and_return(is_token_exist)
-        allow(mock).to receive(:token_file_exists?).and_return(is_token_exist)
-      end
-    end
-
-    let(:mock_calendar_repository) do
-      instance_double('Infrastructure::GoogleCalendarRepository').tap do |mock|
-        allow(mock).to receive(:fetch_events).and_return(mock_events) if defined?(mock_events)
-        allow(mock).to receive(:get_user_email).and_return('test@example.com')
-      end
-    end
-
-    let(:server_context) {
-      {
-        oauth_service: mock_oauth_service,
-        token_repository: mock_token_repository,
-        calendar_repository: mock_calendar_repository
-      }
-    }
+    let(:mock_use_case) { instance_double(Application::AnalyzeCalendarUseCase) }
+    let(:mock_calendar_repository) { instance_double('MockCalendarRepository') }
+    let(:mock_token_repository) { instance_double('MockTokenRepository') }
+    let(:mock_oauth_service) { instance_double('MockOAuthService') }
+    let(:server_context) { { oauth_service: mock_oauth_service, token_repository: mock_token_repository, calendar_repository: mock_calendar_repository } }
 
     include_examples 'BaseTool inheritance', InterfaceAdapters::AnalyzeCalendarTool, {
       start_date: "2024-01-01",
@@ -77,8 +55,17 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
     }
 
     context 'when user is not authenticated' do
-      let(:is_token_exist) { false }
-      let(:mock_events) { [] }
+      before do
+        allow(Application::AnalyzeCalendarUseCase).to receive(:new)
+          .with(calendar_repository: mock_calendar_repository, token_repository: mock_token_repository)
+          .and_return(mock_use_case)
+        
+        allow(mock_use_case).to receive(:execute)
+          .and_raise(Application::AuthenticationRequiredError, "認証が必要です")
+        
+        allow(mock_oauth_service).to receive(:generate_auth_url)
+          .and_return('https://accounts.google.com/oauth/authorize?...')
+      end
 
       it 'should return authentication required message' do
         response = InterfaceAdapters::AnalyzeCalendarTool.call(
@@ -97,9 +84,29 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
     end
 
     context 'when user is authenticated' do
-      include_context 'calendar analysis setup'
-      let(:is_token_exist) { true }
-      let(:mock_events) { [] }
+      let(:mock_result) do
+        {
+          parsed_start_date: Date.parse("2024-01-01"),
+          parsed_end_date: Date.parse("2024-01-31"),
+          color_breakdown: {},
+          summary: { 'total_hours' => 0, 'total_events' => 0 }
+        }
+      end
+
+      before do
+        allow(Application::AnalyzeCalendarUseCase).to receive(:new)
+          .with(calendar_repository: mock_calendar_repository, token_repository: mock_token_repository)
+          .and_return(mock_use_case)
+        
+        allow(mock_use_case).to receive(:execute)
+          .with(
+            start_date: "2024-01-01",
+            end_date: "2024-01-31",
+            include_colors: nil,
+            exclude_colors: nil
+          )
+          .and_return(mock_result)
+      end
 
       it 'should process calendar analysis successfully' do
         response = InterfaceAdapters::AnalyzeCalendarTool.call(
