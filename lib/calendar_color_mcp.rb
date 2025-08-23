@@ -1,5 +1,4 @@
 require 'mcp'
-require 'dotenv/load'
 require_relative 'calendar_color_mcp/server'
 
 module CalendarColorMCP

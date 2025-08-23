@@ -1,6 +1,5 @@
 require 'rspec'
 require 'rspec-parameterized'
-require 'dotenv/load'
 require_relative '../lib/calendar_color_mcp/logger_manager'
 require_relative '../lib/calendar_color_mcp/server'
 
@@ -8,6 +7,9 @@ RSpec.configure do |config|
   # テスト環境でのログ抑制用環境変数を設定
   config.before(:suite) do
     ENV['RSPEC_RUNNING'] = 'true'
+    # テスト用のデフォルト環境変数を設定（.envファイルなしでも動作）
+    ENV['GOOGLE_CLIENT_ID'] ||= 'test-client-id-default'
+    ENV['GOOGLE_CLIENT_SECRET'] ||= 'test-client-secret-default'
   end
   
   config.after(:suite) do

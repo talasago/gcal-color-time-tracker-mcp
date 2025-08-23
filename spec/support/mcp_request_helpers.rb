@@ -6,7 +6,11 @@ module MCPRequestHelpers
     requests_json = requests.map(&:to_json).join("\n")
 
     # テスト実行時はログを抑制する環境変数を設定
-    env = { 'RSPEC_RUNNING' => 'true' }
+    env = { 
+      'RSPEC_RUNNING' => 'true',
+      'GOOGLE_CLIENT_ID' => ENV['GOOGLE_CLIENT_ID'] || 'test-client-id-default',
+      'GOOGLE_CLIENT_SECRET' => ENV['GOOGLE_CLIENT_SECRET'] || 'test-client-secret-default'
+    }
     
     stdout, stderr, _status = Open3.capture3(
       env,
