@@ -8,7 +8,7 @@ require_relative '../../application/errors'
 
 module InterfaceAdapters
   class AnalyzeCalendarTool < BaseTool
-    description "指定期間のGoogleカレンダーイベントを色別に時間集計します"
+    description "指定期間のGoogleカレンダーイベントを色別に時間集計します。対象とする色や除外する色を指定できます。"
 
     input_schema(
       type: "object",
@@ -27,7 +27,7 @@ module InterfaceAdapters
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
-              { type: "string", enum: Domain::ColorConstants.color_names_array }
+              { type: "string", enum: Domain::ColorConstants.all_valid_color_names }
             ]
           }
         },
@@ -37,7 +37,7 @@ module InterfaceAdapters
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
-              { type: "string", enum: Domain::ColorConstants.color_names_array }
+              { type: "string", enum: Domain::ColorConstants.all_valid_color_names }
             ]
           }
         }

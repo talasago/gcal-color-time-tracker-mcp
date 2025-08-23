@@ -6,10 +6,10 @@ require_relative '../../../lib/calendar_color_mcp/domain/errors'
 RSpec.describe Domain::ColorConstants do
 
   describe '.name_to_id' do
-    it 'returns the correct name to id mapping' do
-      expect(described_class.name_to_id['青']).to eq(9)
-      expect(described_class.name_to_id['赤']).to eq(4)
-      expect(described_class.name_to_id['緑']).to eq(2)
+    it 'returns the correct name to id mapping for English names' do
+      expect(described_class.name_to_id['Peacock']).to eq(9)
+      expect(described_class.name_to_id['Flamingo']).to eq(4)
+      expect(described_class.name_to_id['Sage']).to eq(2)
     end
 
     it 'returns a frozen hash' do
@@ -46,9 +46,9 @@ RSpec.describe Domain::ColorConstants do
 
     where(:color_id, :expected) do
       [
-        [1,   '薄紫'],
-        [9,   '青'],
-        [11,  '濃い赤'],
+        [1,   'Lavender'],
+        [9,   'Peacock'],
+        [11,  'Tomato'],
         [0,   nil],
         [12,  nil],
         [nil, nil]
@@ -69,15 +69,16 @@ RSpec.describe Domain::ColorConstants do
       [
         [nil, [], 'nil input'],
         [[], [], 'empty array'],
-        [[1, 2, 9, 11], ['1', '2', '9', '11'], 'valid integer color IDs'],
-        [['薄紫', '緑', '青', '濃い赤'], ['1', '2', '9', '11'], 'valid color names'],
+        [[1, 2, 9, 11], [1, 2, 9, 11], 'valid integer color IDs'],
+        [['Lavender', 'Sage', 'Peacock', 'Tomato'], [1, 2, 9, 11], 'valid English color names'],
+        [['薄紫', '緑', '青', '濃い赤'], [1, 2, 9, 11], 'valid Japanese color names'],
         [['無効な色', '存在しない色'], [], 'invalid color names'],
-        [[1, '緑', 9, '濃い赤', '無効な色'], ['1', '2', '9', '11'], 'mixed valid integers and color names'],
-        [[1, 1.5, '緑'], ['1', '2'], 'mixed with Float values'],
-        [[1, true, '緑'], ['1', '2'], 'mixed with Boolean values'],
-        [[1, nil, '緑'], ['1', '2'], 'mixed with nil values'],
-        [[0, 1, 12, '緑'], ['1', '2'], 'mixed with invalid color IDs'],
-        [[0, 1, 1.5, '緑', true, nil, 12, 9], ['1', '2', '9'], 'mixed with all invalid types and values']
+        [[1, 'Sage', 9, '濃い赤', '無効な色'], [1, 2, 9, 11], 'mixed valid integers and both language color names'],
+        [[1, 1.5, 'Sage'], [1, 2], 'mixed with Float values'],
+        [[1, true, 'Sage'], [1, 2], 'mixed with Boolean values'],
+        [[1, nil, 'Sage'], [1, 2], 'mixed with nil values'],
+        [[0, 1, 12, 'Sage'], [1, 2], 'mixed with invalid color IDs'],
+        [[0, 1, 1.5, 'Sage', true, nil, 12, 9], [1, 2, 9], 'mixed with all invalid types and values']
       ]
     end
 

@@ -56,9 +56,9 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
         )
 
         aggregate_failures do
-          expect(result[:color_breakdown]).to have_key('緑')
-          expect(result[:color_breakdown]['緑'][:event_count]).to eq(1)
-          expect(result[:color_breakdown]['緑'][:total_hours]).to eq(1.0)
+          expect(result[:color_breakdown]).to have_key('Sage')
+          expect(result[:color_breakdown]['Sage'][:event_count]).to eq(1)
+          expect(result[:color_breakdown]['Sage'][:total_hours]).to eq(1.0)
           expect(result[:summary][:total_events]).to eq(1)
           expect(result[:summary][:total_hours]).to eq(1.0)
           expect(result[:parsed_start_date]).to eq(start_date)
@@ -78,10 +78,10 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
           result = use_case.execute(
             start_date: start_date,
             end_date: end_date,
-            include_colors: [EventFactory::GREEN, "緑"]
+            include_colors: [EventFactory::GREEN, "Sage"]
           )
 
-          expect(result[:color_breakdown]['緑'][:event_count]).to eq(1)
+          expect(result[:color_breakdown]['Sage'][:event_count]).to eq(1)
           expect(result[:summary][:total_events]).to eq(1)
         end
 
@@ -93,8 +93,8 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
           )
 
           expect(result[:summary][:total_events]).to eq(2)
-          expect(result[:color_breakdown]).to have_key('緑')
-          expect(result[:color_breakdown]).to have_key('青')
+          expect(result[:color_breakdown]).to have_key('Sage')
+          expect(result[:color_breakdown]).to have_key('Peacock')
         end
 
         it 'should return filtered events when exclude_colors is specified' do
@@ -102,11 +102,11 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
           result = use_case.execute(
             start_date: start_date,
             end_date: end_date,
-            exclude_colors: [EventFactory::BLUE, "青"]
+            exclude_colors: [EventFactory::BLUE, "Peacock"]
           )
 
-          expect(result[:color_breakdown]['緑'][:event_count]).to eq(1)
-          expect(result[:color_breakdown]).not_to have_key('青')
+          expect(result[:color_breakdown]['Sage'][:event_count]).to eq(1)
+          expect(result[:color_breakdown]).not_to have_key('Peacock')
         end
       end
     end

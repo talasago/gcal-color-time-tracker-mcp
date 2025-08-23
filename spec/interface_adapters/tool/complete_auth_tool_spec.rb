@@ -58,7 +58,7 @@ RSpec.describe 'CompleteAuthTool', type: :request do
 
         content = JSON.parse(response.content[0][:text])
         expect(content['success']).to be false
-        expect(content['error']).to eq('認証エラー: massages')
+        expect(content['error']).to eq('認証エラー: messages')
       end
     end
 

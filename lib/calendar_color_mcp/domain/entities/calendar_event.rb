@@ -49,6 +49,24 @@ module Domain
       Domain::ColorConstants.color_name(@color_id) || Domain::ColorConstants.color_name(Domain::ColorConstants.default_color_id)
     end
 
+    def all_day?
+      return false unless @start_time && @end_time
+
+      if google_api_format?
+        # Google Calendar APIの場合: dateフィールドが設定されていて、date_timeフィールドがnilの場合は終日イベント
+        if @start_time.date && @start_time.date_time.nil? && @end_time.date && @end_time.date_time.nil?
+          true
+        else
+          false
+        end
+      else
+        # Time/DateTimeオブジェクトの場合: 開始時刻が00:00:00で終了時刻が23:59:59または翌日の00:00:00の場合
+        # ただし、これは推測ベースなので完全ではない
+        @start_time.hour == 0 && @start_time.min == 0 && @start_time.sec == 0 &&
+        ((@end_time.hour == 23 && @end_time.min == 59) || (@end_time.hour == 0 && @end_time.min == 0 && @end_time.sec == 0))
+      end
+    end
+
     private
 
     def organized_by_user?
@@ -64,7 +82,8 @@ module Domain
     end
 
     def time_object_format?
-      @start_time.is_a?(Time) && @end_time.is_a?(Time)
+      (@start_time.is_a?(Time) || @start_time.is_a?(DateTime)) && 
+      (@end_time.is_a?(Time) || @end_time.is_a?(DateTime))
     end
 
     def google_api_format?
@@ -74,7 +93,15 @@ module Domain
 
     def calculate_time_object_duration
       logger.debug "Format: Time objects"
-      calculated_duration = (@end_time - @start_time) / 3600.0
+      
+      # DateTime同士の減算は日単位のRationalを返すため、時間単位に変換
+      # Time同士の減算は秒単位のFloatを返すため、秒から時間に変換
+      calculated_duration = if @start_time.is_a?(DateTime) || @end_time.is_a?(DateTime)
+        (@end_time - @start_time) * 24  # 日単位から時間単位に変換
+      else
+        (@end_time - @start_time) / 3600.0  # 秒単位から時間単位に変換
+      end
+      
       logger.debug "calculated_duration: #{calculated_duration} hours"
       calculated_duration
     end
