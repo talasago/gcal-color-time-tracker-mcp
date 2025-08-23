@@ -14,20 +14,12 @@ class EventFactory
     start_time: DateTime.new(2025, 1, 1, 10, 0, 0),
     duration_hours: 1.0
   )
-    end_time = start_time + (duration_hours / 24.0)
-
-    start_obj = RSpec::Mocks::Double.new('start')
-    allow(start_obj).to receive(:date_time).and_return(start_time)
-    allow(start_obj).to receive(:date).and_return(nil)
-
-    end_obj = RSpec::Mocks::Double.new('end')
-    allow(end_obj).to receive(:date_time).and_return(end_time)
-    allow(end_obj).to receive(:date).and_return(nil)
+    end_time = start_time + Rational(duration_hours, 24)
 
     Domain::CalendarEvent.new(
       summary: summary,
-      start_time: start_obj,
-      end_time: end_obj,
+      start_time: start_time,
+      end_time: end_time,
       color_id: color_id&.to_s
     )
   end
@@ -38,21 +30,13 @@ class EventFactory
     start_date: '2025-01-01',
     duration_days: 1
   )
-    end_date = Date.parse(start_date) + duration_days
-    end_date_str = end_date.strftime('%Y-%m-%d')
-
-    start_obj = RSpec::Mocks::Double.new('start')
-    allow(start_obj).to receive(:date_time).and_return(nil)
-    allow(start_obj).to receive(:date).and_return(start_date)
-
-    end_obj = RSpec::Mocks::Double.new('end')
-    allow(end_obj).to receive(:date_time).and_return(nil)
-    allow(end_obj).to receive(:date).and_return(end_date_str)
+    start_time = Date.parse(start_date).to_time
+    end_time = (Date.parse(start_date) + duration_days).to_time
 
     Domain::CalendarEvent.new(
       summary: summary,
-      start_time: start_obj,
-      end_time: end_obj,
+      start_time: start_time,
+      end_time: end_time,
       color_id: color_id&.to_s
     )
   end
@@ -61,18 +45,10 @@ class EventFactory
     summary: '不明時間イベント',
     color_id: Domain::ColorConstants::COLOR_NAMES[5] # 黄
   )
-    start_obj = RSpec::Mocks::Double.new('start')
-    allow(start_obj).to receive(:date_time).and_return(nil)
-    allow(start_obj).to receive(:date).and_return(nil)
-
-    end_obj = RSpec::Mocks::Double.new('end')
-    allow(end_obj).to receive(:date_time).and_return(nil)
-    allow(end_obj).to receive(:date).and_return(nil)
-
     Domain::CalendarEvent.new(
       summary: summary,
-      start_time: start_obj,
-      end_time: end_obj,
+      start_time: nil,
+      end_time: nil,
       color_id: color_id&.to_s
     )
   end

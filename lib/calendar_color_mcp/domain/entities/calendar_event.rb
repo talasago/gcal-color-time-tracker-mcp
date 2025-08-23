@@ -64,7 +64,8 @@ module Domain
     end
 
     def time_object_format?
-      @start_time.is_a?(Time) && @end_time.is_a?(Time)
+      (@start_time.is_a?(Time) || @start_time.is_a?(DateTime)) && 
+      (@end_time.is_a?(Time) || @end_time.is_a?(DateTime))
     end
 
     def google_api_format?
@@ -74,7 +75,15 @@ module Domain
 
     def calculate_time_object_duration
       logger.debug "Format: Time objects"
-      calculated_duration = (@end_time - @start_time) / 3600.0
+      
+      # DateTime同士の減算は日単位のRationalを返すため、時間単位に変換
+      # Time同士の減算は秒単位のFloatを返すため、秒から時間に変換
+      calculated_duration = if @start_time.is_a?(DateTime) || @end_time.is_a?(DateTime)
+        (@end_time - @start_time) * 24  # 日単位から時間単位に変換
+      else
+        (@end_time - @start_time) / 3600.0  # 秒単位から時間単位に変換
+      end
+      
       logger.debug "calculated_duration: #{calculated_duration} hours"
       calculated_duration
     end
