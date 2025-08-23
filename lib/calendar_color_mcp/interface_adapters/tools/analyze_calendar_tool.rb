@@ -27,7 +27,7 @@ module InterfaceAdapters
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
-              { type: "string", enum: Domain::ColorConstants.color_names_array }
+              { type: "string", enum: Domain::ColorConstants.all_valid_color_names }
             ]
           }
         },
@@ -37,7 +37,7 @@ module InterfaceAdapters
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
-              { type: "string", enum: Domain::ColorConstants.color_names_array }
+              { type: "string", enum: Domain::ColorConstants.all_valid_color_names }
             ]
           }
         }

@@ -250,7 +250,7 @@ describe Domain::CalendarEvent do
   describe '#color_name' do
     context 'with valid color_id' do
       it 'should return corresponding color name' do
-        expect(event.color_name).to eq('緑')
+        expect(event.color_name).to eq('Sage')
       end
     end
 
