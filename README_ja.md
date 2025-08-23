@@ -15,25 +15,44 @@ Google Calendar色別時間分析のためのMCP (Model Context Protocol) サー
 
 ## インストール・セットアップ
 
-### 1. 依存関係のインストール
+### 1. 前提条件
+
+このプロジェクトを実行するには、RubyとBundlerがシステムにインストールされている必要があります。
+
+```bash
+# Ruby のインストール（バージョン 3.3.6 以上を推奨）
+# macOS で Homebrew を使用する場合：
+brew install ruby
+
+# Ubuntu/Debian の場合：
+sudo apt-get install ruby-dev
+
+# Windows の場合、RubyInstaller を使用：
+# https://rubyinstaller.org/
+
+# Bundler gem のインストール
+gem install bundler
+```
+
+### 2. 依存関係のインストール
 
 ```bash
 bundle install
 ```
 
-### 2. Google Cloud Console設定
+### 3. Google Cloud Console設定
 
-#### 2.1. プロジェクトの作成・選択
+#### 3.1. プロジェクトの作成・選択
 1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
 2. 新規プロジェクトを作成するか、既存プロジェクトを選択
 3. コンソール上部でプロジェクトが正しく選択されていることを確認
 
-#### 2.2. Google Calendar APIの有効化
+#### 3.2. Google Calendar APIの有効化
 1. 正しいプロジェクトが選択されていることを確認
 2. [Calendar API library page](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com)にアクセス
 3. 「有効にする」をクリック
 
-#### 2.3. OAuth 2.0 認証情報の作成
+#### 3.3. OAuth 2.0 認証情報の作成
 1. 左側メニューから「認証情報」を選択
 2. 「認証情報を作成」→「OAuth クライアントID」をクリック
 3. OAuth同意画面の設定（初回のみ）：
@@ -48,21 +67,21 @@ bundle install
 5. 名前を入力（例：Calendar Color MCP）
 6. 「作成」をクリック
 
-#### 2.4. 認証情報の取得
+#### 3.4. 認証情報の取得
 1. 作成されたOAuthクライアントの「クライアントID」と「クライアントシークレット」をコピー
 2. これらの設定を下部のjsonファイルで設定します
 
-#### 2.5. テストユーザーの追加
+#### 3.5. テストユーザーの追加
 1. OAuth同意画面設定で「テストユーザー」セクションに移動
 2. 「ユーザーを追加」をクリックして、カレンダーにアクセスするGoogleアカウントのメールアドレスを追加
 3. ⚠️ **注意**: テストユーザーの追加には数分かかる場合があります
 
-### 3. Claude Desktop設定
+### 4. Claude Desktop設定
 
 Claude Desktop設定ファイル (`claude_desktop_config.json`) で環境変数を設定します。
 設定方法は「Claude Desktop での使用例」セクションを参照してください。
 
-### 4. 実行権限付与
+### 5. 実行権限付与
 
 ```bash
 chmod +x bin/calendar-color-mcp

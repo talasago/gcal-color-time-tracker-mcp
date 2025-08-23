@@ -15,25 +15,44 @@ MCP (Model Context Protocol) server for Google Calendar color-based time analysi
 
 ## Installation & Setup
 
-### 1. Install Dependencies
+### 1. Prerequisites
+
+This project requires Ruby and bundler to be installed on your system.
+
+```bash
+# Install Ruby (version 3.3.6 or higher recommended)
+# On macOS with Homebrew:
+brew install ruby
+
+# On Ubuntu/Debian:
+sudo apt-get install ruby-dev
+
+# On Windows, use RubyInstaller:
+# https://rubyinstaller.org/
+
+# Install bundler gem
+gem install bundler
+```
+
+### 2. Install Dependencies
 
 ```bash
 bundle install
 ```
 
-### 2. Google Cloud Console Setup
+### 3. Google Cloud Console Setup
 
-#### 2.1. Create or Select Project
+#### 3.1. Create or Select Project
 1. Access [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select an existing project
 3. Confirm the correct project is selected at the top of the console
 
-#### 2.2. Enable Google Calendar API
+#### 3.2. Enable Google Calendar API
 1. Confirm the correct project is selected
 2. Access [Calendar API library page](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com)
 3. Click "Enable"
 
-#### 2.3. Create OAuth 2.0 Credentials
+#### 3.3. Create OAuth 2.0 Credentials
 1. Select "Credentials" from the left menu
 2. Click "Create Credentials" → "OAuth client ID"
 3. Configure OAuth consent screen (first time only):
@@ -48,21 +67,21 @@ bundle install
 5. Enter a name (e.g., Calendar Color MCP)
 6. Click "Create"
 
-#### 2.4. Get Credentials
+#### 3.4. Get Credentials
 1. Copy the "Client ID" and "Client Secret" from the created OAuth client
 2. Configure these settings in the JSON file below
 
-#### 2.5. Add Test Users
+#### 3.5. Add Test Users
 1. Go to OAuth consent screen settings and navigate to "Test users" section
 2. Click "Add users" and add the email address of the Google account that will access the calendar
 3. ⚠️ **Note**: Adding test users may take a few minutes
 
-### 3. Claude Desktop Configuration
+### 4. Claude Desktop Configuration
 
 Configure environment variables in the Claude Desktop configuration file (`claude_desktop_config.json`).
 See the "Claude Desktop Usage Examples" section for configuration details.
 
-### 4. Grant Execution Permissions
+### 5. Grant Execution Permissions
 
 ```bash
 chmod +x bin/calendar-color-mcp
