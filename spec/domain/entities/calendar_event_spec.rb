@@ -174,7 +174,6 @@ describe Domain::CalendarEvent do
     end
 
     context 'when event is private (no attendees)' do
-      # TODO: Googleカレンダーの仕様上、参加者がいるイベントは基本的にプライベートではないらしい。ほんとか？
       let(:attendees) { nil }
       let(:organizer) { double('organizer', self?: false) }
 
@@ -184,11 +183,24 @@ describe Domain::CalendarEvent do
     end
 
     context 'when event is private (empty attendees)' do
-      # TODO: Googleカレンダーの仕様上、参加者がいるイベントは基本的にプライベートではないらしい。ほんとか？
       let(:attendees) { [] }
       let(:organizer) { double('organizer', self?: false) }
 
       it 'should return true' do
+        expect(event.attended_by?(user_email)).to be true
+      end
+    end
+
+    context 'when event is private (with attendees)' do
+      let(:attendees) do
+        [
+          double('attendee1', email: user_email, self?: true, accepted?: true),
+          double('attendee2', email: 'other@example.com', self?: false, accepted?: true)
+        ]
+      end
+      let(:organizer) { double('organizer', self?: false) }
+
+      it 'should return true when user is in attendees' do
         expect(event.attended_by?(user_email)).to be true
       end
     end

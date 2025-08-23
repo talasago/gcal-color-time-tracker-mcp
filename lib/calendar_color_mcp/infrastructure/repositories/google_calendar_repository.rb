@@ -38,16 +38,26 @@ module Infrastructure
       raise Infrastructure::ExternalServiceError, "Failed to fetch calendar events: #{e.message}"
     end
 
-    # NOTE: TODO:
-    # 1. Cases where calendar_info becomes nil: Usually doesn't occur if authenticated, but possible per API spec
-    # 2. Cases where calendar_info.id becomes nil: Calendar info can be retrieved but ID field might be empty
     def get_user_email
+      authorize
       calendar_info = @service.get_calendar('primary')
+
+      if calendar_info.nil?
+        raise Application::CalendarAccessError, "Calendar information is not available"
+      end
+
+      if calendar_info.id.nil? || calendar_info.id.empty?
+        raise Application::CalendarAccessError, "User email is not available in calendar information"
+      end
+
       calendar_info.id
     rescue Google::Apis::AuthorizationError => e
       raise Application::AuthenticationRequiredError, "Authentication error: #{e.message}"
     rescue Google::Apis::ClientError, Google::Apis::ServerError => e
       raise Infrastructure::ExternalServiceError, "Failed to get user information: #{e.message}"
+    rescue Application::CalendarAccessError, Application::AuthenticationRequiredError => e
+      # Re-raise Application layer exceptions without conversion
+      raise e
     rescue => e
       raise Infrastructure::ExternalServiceError, "User email retrieval error: #{e.message}"
     end

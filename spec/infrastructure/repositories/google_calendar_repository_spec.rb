@@ -272,9 +272,18 @@ describe Infrastructure::GoogleCalendarRepository do
 
 
   describe '#get_user_email' do
-    let(:mock_calendar_info) { double('calendar_info', id: 'test@example.com') }
+    let(:mock_token_repository) { instance_double(Infrastructure::TokenRepository) }
+    let(:mock_credentials) { double('credentials', expired?: false) }
+
+    before do
+      allow(Infrastructure::TokenRepository).to receive(:instance).and_return(mock_token_repository)
+      allow(mock_token_repository).to receive(:load_credentials).and_return(mock_credentials)
+      allow(mock_service).to receive(:authorization=)
+    end
 
     context 'when getting user email successfully' do
+      let(:mock_calendar_info) { double('calendar_info', id: 'test@example.com') }
+
       before do
         allow(mock_service).to receive(:get_calendar).with('primary').and_return(mock_calendar_info)
       end
@@ -286,7 +295,56 @@ describe Infrastructure::GoogleCalendarRepository do
       end
     end
 
-    context 'when API returns error' do
+    context 'when calendar_info is nil' do
+      before do
+        allow(mock_service).to receive(:get_calendar).with('primary').and_return(nil)
+      end
+
+      it 'should raise CalendarAccessError' do
+        expect { repository.get_user_email }
+          .to raise_error(Application::CalendarAccessError, "Calendar information is not available")
+      end
+    end
+
+    context 'when calendar_info.id is nil' do
+      let(:mock_calendar_info) { double('calendar_info', id: nil) }
+
+      before do
+        allow(mock_service).to receive(:get_calendar).with('primary').and_return(mock_calendar_info)
+      end
+
+      it 'should raise CalendarAccessError' do
+        expect { repository.get_user_email }
+          .to raise_error(Application::CalendarAccessError, "User email is not available in calendar information")
+      end
+    end
+
+    context 'when calendar_info.id is empty' do
+      let(:mock_calendar_info) { double('calendar_info', id: '') }
+
+      before do
+        allow(mock_service).to receive(:get_calendar).with('primary').and_return(mock_calendar_info)
+      end
+
+      it 'should raise CalendarAccessError' do
+        expect { repository.get_user_email }
+          .to raise_error(Application::CalendarAccessError, "User email is not available in calendar information")
+      end
+    end
+
+    context 'when API returns authorization error' do
+      before do
+        allow(mock_service).to receive(:get_calendar)
+          .and_raise(Google::Apis::AuthorizationError.new('Authorization Error'))
+      end
+
+      it 'should raise AuthenticationRequiredError' do
+        expect { repository.get_user_email }
+          .to raise_error(Application::AuthenticationRequiredError, /Authorization Error/)
+      end
+    end
+
+    context 'when API returns client error' do
       before do
         allow(mock_service).to receive(:get_calendar)
           .and_raise(Google::Apis::ClientError.new('API Error'))
@@ -295,6 +353,17 @@ describe Infrastructure::GoogleCalendarRepository do
       it 'should raise ExternalServiceError' do
         expect { repository.get_user_email }
           .to raise_error(Infrastructure::ExternalServiceError, /API Error/)
+      end
+    end
+
+    context 'when credentials are not found' do
+      before do
+        allow(mock_token_repository).to receive(:load_credentials).and_return(nil)
+      end
+
+      it 'should raise AuthenticationRequiredError' do
+        expect { repository.get_user_email }
+          .to raise_error(Application::AuthenticationRequiredError, /Authentication credentials not found/)
       end
     end
   end

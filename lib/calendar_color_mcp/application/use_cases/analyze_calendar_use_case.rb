@@ -1,9 +1,12 @@
 require_relative '../errors'
 require_relative '../../domain/services/event_filter_service'
 require_relative '../../domain/services/time_analysis_service'
+require_relative '../../loggable'
 
 module Application
   class AnalyzeCalendarUseCase
+    include CalendarColorMCP::Loggable
+
     def initialize(calendar_repository:, token_repository:)
       @calendar_repository = calendar_repository
       @token_repository = token_repository
@@ -16,15 +19,13 @@ module Application
       ensure_authenticated
 
       events = @calendar_repository.fetch_events(parsed_start_date, parsed_end_date)
-      filtered_events = @filter_service.apply_filters(events, get_user_email, 
-                                                     include_colors: include_colors, 
+      filtered_events = @filter_service.apply_filters(events, get_user_email,
+                                                     include_colors: include_colors,
                                                      exclude_colors: exclude_colors)
       @analyzer_service.analyze(filtered_events).merge(
         parsed_start_date: parsed_start_date,
         parsed_end_date: parsed_end_date
       )
-    rescue Application::AuthenticationRequiredError => e
-      raise Application::AuthenticationRequiredError, e.message
     end
 
     private
@@ -57,16 +58,18 @@ module Application
     end
 
     def get_user_email
-      begin
-        @calendar_repository.get_user_email
-      rescue Application::AuthenticationRequiredError => e
-        # Re-raise authentication errors
-        raise e
-      rescue
-        # TODO: Need to check if authentication errors are also handled by filtering
-        # For other errors, return nil (will be handled appropriately by filtering layer)
-        nil
-      end
+      @calendar_repository.get_user_email
+    rescue Application::AuthenticationRequiredError => e
+      # Authentication errors are propagated to upper layer
+      raise e
+    rescue Application::CalendarAccessError => e
+      # Log calendar access errors and re-raise
+      logger.error "Calendar access error while retrieving user email: #{e.message}"
+      raise Application::CalendarAccessError, "Failed to retrieve user email: #{e.message}"
+    rescue => e
+      # Log unexpected errors with details and re-raise
+      logger.error "Unexpected error while retrieving user email: #{e.class}: #{e.message}"
+      raise Application::CalendarAccessError, "Unexpected error while retrieving user email: #{e.message}"
     end
   end
 end

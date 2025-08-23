@@ -28,7 +28,6 @@ GEM
     debug_inspector (1.2.0)
     declarative (0.0.20)
     diff-lcs (1.6.2)
-    dotenv (3.1.8)
     drb (2.2.3)
     faraday (2.13.4)
       faraday-net_http (>= 2.0, < 3.5)
@@ -218,7 +217,6 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  dotenv
   fileutils
   google-api-client
   json

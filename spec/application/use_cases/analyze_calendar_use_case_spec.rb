@@ -184,5 +184,60 @@ RSpec.describe Application::AnalyzeCalendarUseCase do
         end
       end
     end
+
+    context 'when get_user_email fails' do
+      before do
+        allow(mock_token_repository).to receive(:token_exist?).and_return(true)
+        allow(mock_calendar_repository).to receive(:fetch_events).and_return([green_event])
+      end
+
+      context 'when AuthenticationRequiredError occurs' do
+        before do
+          allow(mock_calendar_repository).to receive(:get_user_email)
+            .and_raise(Application::AuthenticationRequiredError, "Authentication expired")
+        end
+
+        it 'should propagate AuthenticationRequiredError' do
+          expect {
+            use_case.execute(
+              start_date: start_date,
+              end_date: end_date,
+            )
+          }.to raise_error(Application::AuthenticationRequiredError, "Authentication expired")
+        end
+      end
+
+      context 'when CalendarAccessError occurs' do
+        before do
+          allow(mock_calendar_repository).to receive(:get_user_email)
+            .and_raise(Application::CalendarAccessError, "API access failed")
+        end
+
+        it 'should re-raise as CalendarAccessError with descriptive message' do
+          expect {
+            use_case.execute(
+              start_date: start_date,
+              end_date: end_date,
+            )
+          }.to raise_error(Application::CalendarAccessError, "Failed to retrieve user email: API access failed")
+        end
+      end
+
+      context 'when unexpected error occurs' do
+        before do
+          allow(mock_calendar_repository).to receive(:get_user_email)
+            .and_raise(StandardError, "Unexpected network error")
+        end
+
+        it 'should wrap as CalendarAccessError with descriptive message' do
+          expect {
+            use_case.execute(
+              start_date: start_date,
+              end_date: end_date,
+            )
+          }.to raise_error(Application::CalendarAccessError, "Unexpected error while retrieving user email: Unexpected network error")
+        end
+      end
+    end
   end
 end
