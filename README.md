@@ -1,76 +1,78 @@
 # Calendar Color Time Tracker MCP Server
 
-Google Calendar色別時間分析のためのMCP (Model Context Protocol) サーバーです。Clean Architectureパターンを採用し、公式MCP Ruby SDKで実装されています。
+> **日本語版**→ [README_ja.md](README_ja.md)
 
-## 機能
+MCP (Model Context Protocol) server for Google Calendar color-based time analysis. Built with Clean Architecture pattern and the official MCP Ruby SDK.
 
-- **色別時間集計**: 指定期間のカレンダーイベントを色毎に時間集計
-- **参加イベントのみ集計**: 承諾したイベント、主催イベント、プライベートイベントのみ分析対象
-- **色フィルタリング**: 特定の色のみを集計対象にしたり、特定の色を除外したりが可能
-- **Clean Architecture**: 保守性と拡張性を重視した設計パターンを採用
-- **OAuth 2.0認証**: Google Calendar APIアクセス用のセキュアな認証
-- **シングルユーザー対応**: データベース不要のローカルファイル管理
+## Features
 
-## インストール・セットアップ
+- **Color-based time aggregation**: Aggregate calendar events by color for specified time periods
+- **Participated events only**: Analyzes only accepted events, hosted events, and private events
+- **Color filtering**: Include or exclude specific colors from analysis
+- **Clean Architecture**: Maintainable and extensible design pattern
+- **OAuth 2.0 Authentication**: Secure authentication for Google Calendar API access
+- **Single-user support**: Database-free local file management
 
-### 1. 依存関係のインストール
+## Installation & Setup
+
+### 1. Install Dependencies
 
 ```bash
 bundle install
 ```
 
-### 2. Google Cloud Console設定
+### 2. Google Cloud Console Setup
 
-#### 2.1. プロジェクトの作成・選択
-1. [Google Cloud Console](https://console.cloud.google.com/)にアクセス
-2. 新規プロジェクトを作成するか、既存プロジェクトを選択
-3. コンソール上部でプロジェクトが正しく選択されていることを確認
+#### 2.1. Create or Select Project
+1. Access [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing project
+3. Confirm the correct project is selected at the top of the console
 
-#### 2.2. Google Calendar APIの有効化
-1. 正しいプロジェクトが選択されていることを確認
-2. [Calendar API library page](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com)にアクセス
-3. 「有効にする」をクリック
+#### 2.2. Enable Google Calendar API
+1. Confirm the correct project is selected
+2. Access [Calendar API library page](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com)
+3. Click "Enable"
 
-#### 2.3. OAuth 2.0 認証情報の作成
-1. 左側メニューから「認証情報」を選択
-2. 「認証情報を作成」→「OAuth クライアントID」をクリック
-3. OAuth同意画面の設定（初回のみ）：
-   - 「外部」を選択（組織外ユーザーがアクセス可能）
-   - アプリケーション名を入力
-   - ユーザーサポートメールを設定
-   - 開発者の連絡先情報を入力
-   - スコープの追加（オプション）：
+#### 2.3. Create OAuth 2.0 Credentials
+1. Select "Credentials" from the left menu
+2. Click "Create Credentials" → "OAuth client ID"
+3. Configure OAuth consent screen (first time only):
+   - Select "External" (accessible to users outside your organization)
+   - Enter application name
+   - Set user support email
+   - Enter developer contact information
+   - Add scopes (optional):
      - `https://www.googleapis.com/auth/calendar.events`
      - `https://www.googleapis.com/auth/calendar`
-4. アプリケーションの種類で「デスクトップアプリケーション」を選択
-5. 名前を入力（例：Calendar Color MCP）
-6. 「作成」をクリック
+4. Select "Desktop application" for application type
+5. Enter a name (e.g., Calendar Color MCP)
+6. Click "Create"
 
-#### 2.4. 認証情報の取得
-1. 作成されたOAuthクライアントの「クライアントID」と「クライアントシークレット」をコピー
-2. これらの設定を下部のjsonファイルで設定します
+#### 2.4. Get Credentials
+1. Copy the "Client ID" and "Client Secret" from the created OAuth client
+2. Configure these settings in the JSON file below
 
-#### 2.5. テストユーザーの追加
-1. OAuth同意画面設定で「テストユーザー」セクションに移動
-2. 「ユーザーを追加」をクリックして、カレンダーにアクセスするGoogleアカウントのメールアドレスを追加
-3. ⚠️ **注意**: テストユーザーの追加には数分かかる場合があります
+#### 2.5. Add Test Users
+1. Go to OAuth consent screen settings and navigate to "Test users" section
+2. Click "Add users" and add the email address of the Google account that will access the calendar
+3. ⚠️ **Note**: Adding test users may take a few minutes
 
-### 3. Claude Desktop設定
+### 3. Claude Desktop Configuration
 
-Claude Desktop設定ファイル (`claude_desktop_config.json`) で環境変数を設定します。
-設定方法は「Claude Desktop での使用例」セクションを参照してください。
+Configure environment variables in the Claude Desktop configuration file (`claude_desktop_config.json`).
+See the "Claude Desktop Usage Examples" section for configuration details.
 
-### 4. 実行権限付与
+### 4. Grant Execution Permissions
 
 ```bash
 chmod +x bin/calendar-color-mcp
 ```
 
-## 使用方法
+## Usage
 
-### Claude Desktop での使用例
+### Claude Desktop Usage Examples
 
-#### Claude Desktop 設定 (claude_desktop_config.json)
+#### Claude Desktop Configuration (claude_desktop_config.json)
 
 ```json
 {
@@ -87,11 +89,11 @@ chmod +x bin/calendar-color-mcp
 }
 ```
 
-### MCPツール使用例
+### MCP Tool Usage Examples
 
-#### カレンダー分析（参加イベントのみ）
+#### Calendar Analysis (Participated Events Only)
 
-基本的な使用例：
+Basic usage example:
 ```json
 {
   "name": "analyze_calendar",
@@ -102,7 +104,7 @@ chmod +x bin/calendar-color-mcp
 }
 ```
 
-色フィルタリング使用例：
+Color filtering usage example:
 ```json
 {
   "name": "analyze_calendar", 
@@ -115,58 +117,58 @@ chmod +x bin/calendar-color-mcp
 }
 ```
 
-**分析対象となるイベント：**
-- ユーザーが主催者のイベント
-- 招待を承諾したイベント（`responseStatus: "accepted"`）
-- 参加者情報のないプライベートイベント
+**Events included in analysis:**
+- Events where the user is the organizer
+- Events where invitations are accepted (`responseStatus: "accepted"`)
+- Private events with no attendee information
 
-**除外されるイベント：**
-- 辞退したイベント（`responseStatus: "declined"`）
-- 仮承諾のイベント（`responseStatus: "tentative"`）
-- 未応答のイベント（`responseStatus: "needsAction"`）
+**Events excluded from analysis:**
+- Declined events (`responseStatus: "declined"`)
+- Tentative events (`responseStatus: "tentative"`)
+- Events needing action (`responseStatus: "needsAction"`)
 
-**色フィルタリングパラメータ：**
-- `include_colors`: 集計対象の色（色ID(1-11)またはカラー名）
-- `exclude_colors`: 集計除外の色（色ID(1-11)またはカラー名）
-- 色IDとカラー名の混在指定可能
-- exclude_colorsがinclude_colorsより優先
+**Color filtering parameters:**
+- `include_colors`: Colors to include in analysis (color ID 1-11 or color names)
+- `exclude_colors`: Colors to exclude from analysis (color ID 1-11 or color names)
+- Mixed specification of color IDs and color names is supported
+- exclude_colors takes priority over include_colors
 
-## プロジェクト構成 (Clean Architecture)
+## Project Structure (Clean Architecture)
 
 ```
 calendar-color-mcp/
 ├── lib/
-│   ├── calendar_color_mcp.rb            # メインエントリーポイント
+│   ├── calendar_color_mcp.rb            # Main entry point
 │   └── calendar_color_mcp/
-│       ├── server.rb                    # MCPサーバー実装
-│       ├── loggable.rb                  # ログ機能
-│       ├── logger_manager.rb            # ログ管理
-│       ├── interface_adapters/          # Interface Adapters層
-│       │   ├── tools/                   # MCPツール実装
-│       │   └── presenters/              # データ表示形式変換
-│       ├── application/                 # Application層
+│       ├── server.rb                    # MCP server implementation
+│       ├── loggable.rb                  # Logging functionality
+│       ├── logger_manager.rb            # Log management
+│       ├── interface_adapters/          # Interface Adapters layer
+│       │   ├── tools/                   # MCP tool implementations
+│       │   └── presenters/              # Data presentation format conversion
+│       ├── application/                 # Application layer
 │       │   └── use_cases/               
-│       ├── domain/                      # Domain層
+│       ├── domain/                      # Domain layer
 │       │   ├── entities/                
 │       │   └── services/                
-│       └── infrastructure/              # Infrastructure層
+│       └── infrastructure/              # Infrastructure layer
 │           ├── repositories/            
 │           └── services/                
-├── spec/                                # テストスイート (RSpec)
+├── spec/                                # Test suite (RSpec)
 │   ├── CLAUDE.md                        
-│   └── [各層に対応したテスト構造]
-├── docs/                                # 開発ドキュメント
+│   └── [Test structure corresponding to each layer]
+├── docs/                                # Development documentation
 ├── bin/
-│   └── calendar-color-mcp               # 実行可能ファイル
-├── Gemfile                              # 依存関係定義
+│   └── calendar-color-mcp               # Executable file
+├── Gemfile                              # Dependency definitions
 ├── LICENSE                              
-├── CLAUDE.md                            # Claude Code用プロジェクト説明
+├── CLAUDE.md                            # Project description for Claude Code
 ```
 
-## カレンダー色定義
+## Calendar Color Definitions
 
-| 色ID | 英語名 | 日本語名 |
-|------|--------|----------|
+| Color ID | English Name | Japanese Name |
+|----------|--------------|---------------|
 | 1 | Lavender | 薄紫 |
 | 2 | Sage | 緑 |
 | 3 | Grape | 紫 |
@@ -179,41 +181,41 @@ calendar-color-mcp/
 | 10 | Basil | 濃い緑 |
 | 11 | Tomato | 濃い赤 |
 
-色フィルタリングでは、色ID（1-11）、英語名、日本語名のいずれでも指定可能です。
+Color filtering supports color IDs (1-11), English names, or Japanese names.
 
-## 認証フロー
+## Authentication Flow
 
-1. 初回使用時は認証が必要
-2. `start_auth`ツールまたは`analyze_calendar`実行時に認証URLが提供される
-3. URLにアクセスしてGoogle認証を完了
-4. 認証情報はローカルファイルに保存
-5. リフレッシュトークンにより再認証頻度を最小化
+1. Authentication is required on first use
+2. Authentication URL is provided when running `start_auth` tool or `analyze_calendar`
+3. Access the URL to complete Google authentication
+4. Authentication information is saved to local file
+5. Refresh tokens minimize re-authentication frequency
 
-## 開発・テスト
+## Development & Testing
 
-### 開発環境
+### Development Environment
 
 ```bash
 bundle install
 ```
 
-### テスト実行
+### Run Tests
 
 ```bash
 bundle exec rspec
 ```
 
-### デバッグ
+### Debug
 
-環境変数`DEBUG=true`を設定してデバッグログを有効化
+Set environment variable `DEBUG=true` to enable debug logging
 
-## アーキテクチャ
+## Architecture
 
-このプロジェクトはClean Architectureパターンを採用しています。詳細なアーキテクチャ情報については以下のドキュメントを参照してください：
+This project adopts the Clean Architecture pattern. For detailed architecture information, refer to the following documents:
 
-- **[lib/CLAUDE.md](lib/CLAUDE.md)**: ライブラリアーキテクチャ、設計パターン、ビジネスロジックの詳細
-- **[spec/CLAUDE.md](spec/CLAUDE.md)**: テストアーキテクチャ、テストルール、テスト実行方法の詳細
+- **[lib/CLAUDE.md](lib/CLAUDE.md)**: Library architecture, design patterns, and business logic details
+- **[spec/CLAUDE.md](spec/CLAUDE.md)**: Test architecture, test rules, and test execution methods
 
-## ライセンス
+## License
 
 MIT License
