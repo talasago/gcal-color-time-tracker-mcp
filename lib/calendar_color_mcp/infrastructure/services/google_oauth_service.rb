@@ -48,7 +48,7 @@ module Infrastructure
         client_secret: @config_service.google_client_secret,
         authorization_uri: 'https://accounts.google.com/o/oauth2/auth',
         token_credential_uri: 'https://oauth2.googleapis.com/token',
-        redirect_uri: 'urn:ietf:wg:oauth:2.0:oob'
+        redirect_uri: REDIRECT_URI
       )
     end
   end
