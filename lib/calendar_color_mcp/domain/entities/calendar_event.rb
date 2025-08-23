@@ -49,6 +49,24 @@ module Domain
       Domain::ColorConstants.color_name(@color_id) || Domain::ColorConstants.color_name(Domain::ColorConstants.default_color_id)
     end
 
+    def all_day?
+      return false unless @start_time && @end_time
+
+      if google_api_format?
+        # Google Calendar APIの場合: dateフィールドが設定されていて、date_timeフィールドがnilの場合は終日イベント
+        if @start_time.date && @start_time.date_time.nil? && @end_time.date && @end_time.date_time.nil?
+          true
+        else
+          false
+        end
+      else
+        # Time/DateTimeオブジェクトの場合: 開始時刻が00:00:00で終了時刻が23:59:59または翌日の00:00:00の場合
+        # ただし、これは推測ベースなので完全ではない
+        @start_time.hour == 0 && @start_time.min == 0 && @start_time.sec == 0 &&
+        ((@end_time.hour == 23 && @end_time.min == 59) || (@end_time.hour == 0 && @end_time.min == 0 && @end_time.sec == 0))
+      end
+    end
+
     private
 
     def organized_by_user?

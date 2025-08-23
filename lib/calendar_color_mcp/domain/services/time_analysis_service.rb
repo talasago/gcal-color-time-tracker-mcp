@@ -60,13 +60,22 @@ module Domain
     def format_event_time(event)
       return 'Unknown time' if event.start_time.nil?
 
-      if event.start_time.is_a?(DateTime) || event.start_time.is_a?(Time)
-        # 時刻が00:00:00の場合は終日イベントとして扱う
-        if event.start_time.hour == 0 && event.start_time.min == 0 && event.start_time.sec == 0
-          "#{event.start_time.strftime('%Y-%m-%d')} (All-day)"
-        else
-          event.start_time.strftime('%Y-%m-%d %H:%M')
-        end
+      if event.all_day?
+        format_all_day_event_time(event)
+      elsif event.start_time.is_a?(DateTime) || event.start_time.is_a?(Time)
+        event.start_time.strftime('%Y-%m-%d %H:%M')
+      else
+        'Unknown time'
+      end
+    end
+
+    def format_all_day_event_time(event)
+      if event.start_time.respond_to?(:date) && event.start_time.date
+        # Google Calendar API形式の場合
+        "#{event.start_time.date} (All-day)"
+      elsif event.start_time.is_a?(DateTime) || event.start_time.is_a?(Time)
+        # Time/DateTime形式の場合
+        "#{event.start_time.strftime('%Y-%m-%d')} (All-day)"
       else
         'Unknown time'
       end

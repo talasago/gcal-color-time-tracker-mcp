@@ -77,6 +77,36 @@ describe Domain::TimeAnalysisService do
         yellow_event = color_breakdown['Banana'][:events].first
         expect(yellow_event[:start_time]).to eq('Unknown time')
       end
+
+      it 'correctly distinguishes midnight meetings from all-day events' do
+        filtered_events = [
+          # Midnight meeting (should not be treated as all-day)
+          EventFactory.timed_event(
+            summary: '深夜ミーティング',
+            color_id: EventFactory::BLUE,
+            start_time: DateTime.new(2025, 1, 1, 0, 0, 0),
+            duration_hours: 1.0
+          ),
+          # True all-day event
+          EventFactory.all_day_event(
+            summary: '終日会議',
+            color_id: EventFactory::GREEN,
+            start_date: '2025-01-01'
+          )
+        ]
+
+        result = service.analyze(filtered_events)
+        
+        # Midnight meeting should be formatted with time
+        blue_event = result[:color_breakdown]['Peacock'][:events].first
+        expect(blue_event[:title]).to eq('深夜ミーティング')
+        expect(blue_event[:start_time]).to eq('2025-01-01 00:00')
+        
+        # All-day event should be formatted as all-day
+        green_event = result[:color_breakdown]['Sage'][:events].first
+        expect(green_event[:title]).to eq('終日会議')
+        expect(green_event[:start_time]).to eq('2025-01-01 (All-day)')
+      end
     end
 
     context 'with decimal precision requirements' do

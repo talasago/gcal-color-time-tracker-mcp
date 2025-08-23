@@ -270,4 +270,63 @@ describe Domain::CalendarEvent do
       end
     end
   end
+
+  describe '#all_day?' do
+    subject { event.all_day? }
+
+    where(:case_name, :start_time_proc, :end_time_proc, :expected) do
+      [
+        # Google Calendar API format
+        ['date fields set, date_time nil (all-day)', 
+         proc { double('start', date_time: nil, date: '2025-01-01') },
+         proc { double('end', date_time: nil, date: '2025-01-02') }, 
+         true],
+        ['date_time fields set, date nil (timed event)', 
+         proc { double('start', date_time: DateTime.new(2025, 1, 1, 9, 0, 0), date: nil) },
+         proc { double('end', date_time: DateTime.new(2025, 1, 1, 10, 0, 0), date: nil) }, 
+         false],
+        ['date_time at midnight (not all-day)', 
+         proc { double('start', date_time: DateTime.new(2025, 1, 1, 0, 0, 0), date: nil) },
+         proc { double('end', date_time: DateTime.new(2025, 1, 1, 1, 0, 0), date: nil) }, 
+         false],
+        
+        # Time/DateTime objects (legacy format)
+        ['start 00:00:00, end next day 00:00:00 (all-day)', 
+         proc { Time.new(2025, 1, 1, 0, 0, 0) },
+         proc { Time.new(2025, 1, 2, 0, 0, 0) }, 
+         true],
+        ['start 00:00:00, end 23:59:59 (all-day)', 
+         proc { Time.new(2025, 1, 1, 0, 0, 0) },
+         proc { Time.new(2025, 1, 1, 23, 59, 0) }, 
+         true],
+        ['start 00:00:00, end 01:30:00 (midnight meeting)', 
+         proc { Time.new(2025, 1, 1, 0, 0, 0) },
+         proc { Time.new(2025, 1, 1, 1, 30, 0) }, 
+         false],
+        ['regular timed event', 
+         proc { Time.new(2025, 1, 1, 9, 0, 0) },
+         proc { Time.new(2025, 1, 1, 10, 0, 0) }, 
+         false],
+        
+        # Missing time data
+        ['start_time is nil', 
+         proc { nil },
+         proc { Time.new(2025, 1, 1, 10, 0, 0) }, 
+         false],
+        ['end_time is nil', 
+         proc { Time.new(2025, 1, 1, 9, 0, 0) },
+         proc { nil }, 
+         false]
+      ]
+    end
+
+    with_them do
+      let(:start_time) { start_time_proc.call }
+      let(:end_time) { end_time_proc.call }
+
+      it "should return #{params[:expected]} for #{params[:case_name]}" do
+        expect(subject).to eq(expected)
+      end
+    end
+  end
 end
