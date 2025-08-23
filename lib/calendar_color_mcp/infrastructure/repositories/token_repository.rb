@@ -15,7 +15,6 @@ module Infrastructure
     def initialize
       @config_service = ConfigurationService.instance
       @token_file_path = build_token_file_path
-      # NOTE:なにこれ？
       @mutex = Mutex.new
 
       logger.debug "TokenRepository initialized"
