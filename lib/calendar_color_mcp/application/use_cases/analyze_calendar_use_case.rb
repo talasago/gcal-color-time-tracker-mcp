@@ -1,9 +1,12 @@
 require_relative '../errors'
 require_relative '../../domain/services/event_filter_service'
 require_relative '../../domain/services/time_analysis_service'
+require_relative '../../loggable'
 
 module Application
   class AnalyzeCalendarUseCase
+    include CalendarColorMCP::Loggable
+
     def initialize(calendar_repository:, token_repository:)
       @calendar_repository = calendar_repository
       @token_repository = token_repository
@@ -61,11 +64,11 @@ module Application
       raise e
     rescue Application::CalendarAccessError => e
       # Log calendar access errors and re-raise
-      # TODO: Add logging after log functionality is implemented
+      logger.error "Calendar access error while retrieving user email: #{e.message}"
       raise Application::CalendarAccessError, "Failed to retrieve user email: #{e.message}"
     rescue => e
       # Log unexpected errors with details and re-raise
-      # TODO: Add error logging after log functionality is implemented
+      logger.error "Unexpected error while retrieving user email: #{e.class}: #{e.message}"
       raise Application::CalendarAccessError, "Unexpected error while retrieving user email: #{e.message}"
     end
   end
