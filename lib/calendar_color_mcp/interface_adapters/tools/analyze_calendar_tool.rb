@@ -8,7 +8,7 @@ require_relative '../../application/errors'
 
 module InterfaceAdapters
   class AnalyzeCalendarTool < BaseTool
-    description "指定期間のGoogleカレンダーイベントを色別に時間集計します"
+    description "指定期間のGoogleカレンダーイベントを色別に時間集計します。対象とする色や除外する色を指定できます。"
 
     input_schema(
       type: "object",
