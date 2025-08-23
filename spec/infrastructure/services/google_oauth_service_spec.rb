@@ -60,7 +60,7 @@ describe Infrastructure::GoogleOAuthService do
 
       it 'should raise Infrastructure::ExternalServiceError' do
         expect { oauth_service.exchange_code_for_token(auth_code) }
-          .to raise_error(Infrastructure::ExternalServiceError, /トークン交換に失敗しました: Invalid authorization code/)
+          .to raise_error(Infrastructure::ExternalServiceError, /Failed to exchange token: Invalid authorization code/)
       end
     end
   end

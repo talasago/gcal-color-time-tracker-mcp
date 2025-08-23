@@ -16,7 +16,7 @@ RSpec.describe 'CompleteAuthTool', type: :request do
       before do
         allow(mock_auth_manager).to receive(:complete_auth).and_return({
           success: true,
-          message: "認証が完了しました"
+          message: "Authentication completed successfully"
         })
       end
 
@@ -30,7 +30,7 @@ RSpec.describe 'CompleteAuthTool', type: :request do
 
         content = JSON.parse(response.content[0][:text])
         expect(content['success']).to be true
-        expect(content['message']).to eq("認証が完了しました")
+        expect(content['message']).to eq("Authentication completed successfully")
       end
     end
 
@@ -58,7 +58,7 @@ RSpec.describe 'CompleteAuthTool', type: :request do
 
         content = JSON.parse(response.content[0][:text])
         expect(content['success']).to be false
-        expect(content['error']).to eq('認証エラー: messages')
+        expect(content['error']).to eq('Authentication error: messages')
       end
     end
 
@@ -73,7 +73,7 @@ RSpec.describe 'CompleteAuthTool', type: :request do
 
         expect(content['success']).to be false
         # Specific error message defined in implementation
-        expect(content['error']).to eq('入力エラー: 認証コードが入力されていません')
+        expect(content['error']).to eq('Input error: Authorization code is required')
       end
     end
   end

@@ -39,20 +39,20 @@ RSpec.describe InterfaceAdapters::Presenters::CalendarAnalysisPresenter do
       subject { described_class.format_text(result) }
 
       it 'should return properly formatted string' do
-        expect(subject).to include("📊 色別時間集計結果:")
+        expect(subject).to include("📊 Color-Based Time Analysis Results:")
         expect(subject).to include("=" * 50)
         expect(subject).to include("🎨 赤:")
-        expect(subject).to include("時間: 2時間30分")
-        expect(subject).to include("イベント数: 3件")
-        expect(subject).to include("主なイベント: 会議A, 会議B, 会議C")
+        expect(subject).to include("Time: 2 hours 30 minutes")
+        expect(subject).to include("Event count: 3 events")
+        expect(subject).to include("Main events: 会議A, 会議B, 会議C")
         expect(subject).to include("🎨 青:")
-        expect(subject).to include("時間: 1時間15分")
-        expect(subject).to include("イベント数: 1件")
-        expect(subject).to include("主なイベント: 個人作業")
-        expect(subject).to include("📈 サマリー:")
-        expect(subject).to include("総時間: 3.75時間")
-        expect(subject).to include("総イベント数: 4件")
-        expect(subject).to include("最も使用された色: 赤 (2.5時間、66.7%)")
+        expect(subject).to include("Time: 1 hours 15 minutes")
+        expect(subject).to include("Event count: 1 events")
+        expect(subject).to include("Main events: 個人作業")
+        expect(subject).to include("📈 Summary:")
+        expect(subject).to include("Total time: 3.75 hours")
+        expect(subject).to include("Total events: 4 events")
+        expect(subject).to include("Most used color: 赤 (2.5 hours, 66.7%)")
       end
     end
 
@@ -60,9 +60,9 @@ RSpec.describe InterfaceAdapters::Presenters::CalendarAnalysisPresenter do
       subject { described_class.format_text(result, include_colors: ["赤"], exclude_colors: ["青"]) }
 
       it 'should return string with filtering information' do
-        expect(subject).to include("🎨 色フィルタリング設定:")
-        expect(subject).to include("含める色: 赤")
-        expect(subject).to include("除外する色: 青")
+        expect(subject).to include("🎨 Color Filter Settings:")
+        expect(subject).to include("Include colors: 赤")
+        expect(subject).to include("Exclude colors: 青")
       end
     end
 
@@ -70,8 +70,8 @@ RSpec.describe InterfaceAdapters::Presenters::CalendarAnalysisPresenter do
       subject { described_class.format_text(result, include_colors: ["赤"]) }
 
       it 'should display only include colors' do
-        expect(subject).to include("含める色: 赤")
-        expect(subject).to include("除外する色: なし")
+        expect(subject).to include("Include colors: 赤")
+        expect(subject).to include("Exclude colors: None")
       end
     end
 
@@ -106,7 +106,7 @@ RSpec.describe InterfaceAdapters::Presenters::CalendarAnalysisPresenter do
       subject { described_class.format_text(result_with_many_events) }
 
       it 'should display only the first 3 events' do
-        expect(subject).to include("主なイベント: イベント1, イベント2, イベント3")
+        expect(subject).to include("Main events: イベント1, イベント2, イベント3")
         expect(subject).not_to include("イベント4")
         expect(subject).not_to include("イベント5")
       end
@@ -133,9 +133,9 @@ RSpec.describe InterfaceAdapters::Presenters::CalendarAnalysisPresenter do
       subject { described_class.format_text(result_without_most_used) }
 
       it 'should not display most used color information' do
-        expect(subject).to include("総時間: 2.0時間")
-        expect(subject).to include("総イベント数: 1件")
-        expect(subject).not_to include("最も使用された色:")
+        expect(subject).to include("Total time: 2.0 hours")
+        expect(subject).to include("Total events: 1 events")
+        expect(subject).not_to include("Most used color:")
       end
     end
   end

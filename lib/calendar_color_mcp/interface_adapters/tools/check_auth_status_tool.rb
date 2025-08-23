@@ -4,7 +4,7 @@ require_relative '../../application/use_cases/authenticate_user_use_case'
 
 module InterfaceAdapters
   class CheckAuthStatusTool < BaseTool
-    description "認証状態を確認します"
+    description "Check authentication status"
 
     input_schema(
       type: "object",
@@ -29,11 +29,11 @@ module InterfaceAdapters
           success_response(result)
         rescue Application::AuthenticationError => e
           logger.error "Authentication error: #{e.message}"
-          error_response("認証状態確認エラー: #{e.message}")
+          error_response("Authentication status check error: #{e.message}")
         rescue => e
           logger.error "Unexpected error occurred: #{e.message}"
           logger.debug "Error details: #{e.backtrace&.first(5)&.join(', ')}"
-          error_response("認証状態確認時に予期しないエラーが発生しました")
+          error_response("An unexpected error occurred during authentication status check")
         end
       end
     end

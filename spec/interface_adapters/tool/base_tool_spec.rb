@@ -15,17 +15,17 @@ RSpec.describe InterfaceAdapters::BaseTool do
 
     context 'when server_context is nil' do
       let(:context) { { server_context: nil } }
-      it { expect { subject }.to raise_error(ArgumentError, "認証マネージャーが利用できません") }
+      it { expect { subject }.to raise_error(ArgumentError, "Authentication manager is not available") }
     end
 
     context 'when auth_manager is nil' do
       let(:server_context) { { auth_manager: nil } }
-      it { expect { subject }.to raise_error(ArgumentError, "認証マネージャーが利用できません") }
+      it { expect { subject }.to raise_error(ArgumentError, "Authentication manager is not available") }
     end
 
     context 'when server_context is missing' do
       let(:context) { {} }
-      it { expect { subject }.to raise_error(ArgumentError, "認証マネージャーが利用できません") }
+      it { expect { subject }.to raise_error(ArgumentError, "Authentication manager is not available") }
     end
   end
 

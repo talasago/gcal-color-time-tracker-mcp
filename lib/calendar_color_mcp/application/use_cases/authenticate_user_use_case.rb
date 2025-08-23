@@ -14,16 +14,16 @@ module Application
 
     def start_authentication
       auth_url = @oauth_service.generate_auth_url
-      instructions = "上記URLにアクセスしてください。認証後、認証コードを取得し、CompleteAuthToolで認証を完了してください。"
+      instructions = "Please access the above URL. After authentication, obtain the authorization code and complete the authentication with CompleteAuthTool."
 
       {
         auth_url: auth_url,
         instructions: instructions
       }
     rescue Infrastructure::ExternalServiceError => e
-      raise Application::AuthenticationError, "認証開始に失敗しました: #{e.message}"
+      raise Application::AuthenticationError, "Failed to start authentication: #{e.message}"
     rescue => e
-      raise Application::AuthenticationError, "認証開始に失敗しました: #{e.message}"
+      raise Application::AuthenticationError, "Failed to start authentication: #{e.message}"
     end
 
     def complete_authentication(auth_code)
@@ -34,14 +34,14 @@ module Application
 
       {
         success: true,
-        message: "認証が完了しました"
+        message: "Authentication completed successfully"
       }
     rescue Application::ValidationError => e
       raise e
     rescue Infrastructure::ExternalServiceError => e
-      raise Application::AuthenticationError, "認証完了に失敗しました: #{e.message}"
+      raise Application::AuthenticationError, "Failed to complete authentication: #{e.message}"
     rescue => e
-      raise Application::AuthenticationError, "認証完了に失敗しました: #{e.message}"
+      raise Application::AuthenticationError, "Failed to complete authentication: #{e.message}"
     end
 
     def check_authentication_status
@@ -55,24 +55,24 @@ module Application
         auth_url: authenticated ? nil : @oauth_service.generate_auth_url
       }
     rescue Infrastructure::ExternalServiceError => e
-      raise Application::AuthenticationError, "認証状態確認に失敗しました: #{e.message}"
+      raise Application::AuthenticationError, "Failed to check authentication status: #{e.message}"
     rescue => e
-      raise Application::AuthenticationError, "認証状態確認に失敗しました: #{e.message}"
+      raise Application::AuthenticationError, "Failed to check authentication status: #{e.message}"
     end
 
     private
 
     def validate_auth_code(auth_code)
       if auth_code.nil? || auth_code.to_s.strip.empty?
-        raise Application::ValidationError, "認証コードが入力されていません"
+        raise Application::ValidationError, "Authorization code is required"
       end
     end
 
     def build_status_message(authenticated)
       if authenticated
-        "認証済みです"
+        "Authenticated"
       else
-        "認証が必要です。start_authを実行してください"
+        "Authentication required. Please run start_auth"
       end
     end
   end
