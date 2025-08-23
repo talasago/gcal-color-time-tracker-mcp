@@ -1,6 +1,6 @@
 # Calendar Color Time Tracker MCP Server
 
-> **English version**→ [README.md](README.md)
+**English version**→ [README.md](README.md)
 
 Google Calendar色別時間分析のためのMCP (Model Context Protocol) サーバーです。Clean Architectureパターンを採用し、公式MCP Ruby SDKで実装されています。
 
