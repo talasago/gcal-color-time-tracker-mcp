@@ -20,7 +20,7 @@ class EventFactory
       summary: summary,
       start_time: start_time,
       end_time: end_time,
-      color_id: color_id&.to_s
+      color_id: color_id
     )
   end
 
@@ -37,7 +37,7 @@ class EventFactory
       summary: summary,
       start_time: start_time,
       end_time: end_time,
-      color_id: color_id&.to_s
+      color_id: color_id
     )
   end
 
@@ -49,7 +49,7 @@ class EventFactory
       summary: summary,
       start_time: nil,
       end_time: nil,
-      color_id: color_id&.to_s
+      color_id: color_id
     )
   end
 

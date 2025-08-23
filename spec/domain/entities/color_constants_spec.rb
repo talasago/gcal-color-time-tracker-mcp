@@ -69,16 +69,16 @@ RSpec.describe Domain::ColorConstants do
       [
         [nil, [], 'nil input'],
         [[], [], 'empty array'],
-        [[1, 2, 9, 11], ['1', '2', '9', '11'], 'valid integer color IDs'],
-        [['Lavender', 'Sage', 'Peacock', 'Tomato'], ['1', '2', '9', '11'], 'valid English color names'],
-        [['薄紫', '緑', '青', '濃い赤'], ['1', '2', '9', '11'], 'valid Japanese color names'],
+        [[1, 2, 9, 11], [1, 2, 9, 11], 'valid integer color IDs'],
+        [['Lavender', 'Sage', 'Peacock', 'Tomato'], [1, 2, 9, 11], 'valid English color names'],
+        [['薄紫', '緑', '青', '濃い赤'], [1, 2, 9, 11], 'valid Japanese color names'],
         [['無効な色', '存在しない色'], [], 'invalid color names'],
-        [[1, 'Sage', 9, '濃い赤', '無効な色'], ['1', '2', '9', '11'], 'mixed valid integers and both language color names'],
-        [[1, 1.5, 'Sage'], ['1', '2'], 'mixed with Float values'],
-        [[1, true, 'Sage'], ['1', '2'], 'mixed with Boolean values'],
-        [[1, nil, 'Sage'], ['1', '2'], 'mixed with nil values'],
-        [[0, 1, 12, 'Sage'], ['1', '2'], 'mixed with invalid color IDs'],
-        [[0, 1, 1.5, 'Sage', true, nil, 12, 9], ['1', '2', '9'], 'mixed with all invalid types and values']
+        [[1, 'Sage', 9, '濃い赤', '無効な色'], [1, 2, 9, 11], 'mixed valid integers and both language color names'],
+        [[1, 1.5, 'Sage'], [1, 2], 'mixed with Float values'],
+        [[1, true, 'Sage'], [1, 2], 'mixed with Boolean values'],
+        [[1, nil, 'Sage'], [1, 2], 'mixed with nil values'],
+        [[0, 1, 12, 'Sage'], [1, 2], 'mixed with invalid color IDs'],
+        [[0, 1, 1.5, 'Sage', true, nil, 12, 9], [1, 2, 9], 'mixed with all invalid types and values']
       ]
     end
 

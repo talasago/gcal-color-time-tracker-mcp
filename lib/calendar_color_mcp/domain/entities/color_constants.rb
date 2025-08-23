@@ -58,9 +58,9 @@ module Domain
       colors.filter_map do |color|
         case color
         when Integer
-          valid_color_id?(color) ? color.to_s : nil
+          valid_color_id?(color) ? color : nil
         when String
-          COMBINED_NAME_TO_ID[color]&.to_s
+          COMBINED_NAME_TO_ID[color]
         else
           nil
         end
