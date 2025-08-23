@@ -23,7 +23,7 @@ RSpec.describe Application::AuthenticateUserUseCase do
       result = use_case.start_authentication
 
       expect(result[:auth_url]).to eq(auth_url)
-      expect(result[:instructions]).to include('認証')
+      expect(result[:instructions]).to include('authentication')
       expect(mock_oauth_service).to have_received(:generate_auth_url)
     end
   end
@@ -43,7 +43,7 @@ RSpec.describe Application::AuthenticateUserUseCase do
         result = use_case.complete_authentication(auth_code)
 
         expect(result[:success]).to be true
-        expect(result[:message]).to eq('認証が完了しました')
+        expect(result[:message]).to eq('Authentication completed successfully')
         expect(mock_oauth_service).to have_received(:exchange_code_for_token).with(auth_code)
         expect(mock_token_repository).to have_received(:save_credentials).with(credentials)
       end
@@ -58,7 +58,7 @@ RSpec.describe Application::AuthenticateUserUseCase do
       it 'should raise AuthenticationError' do
         expect {
           use_case.complete_authentication(auth_code)
-        }.to raise_error(Application::AuthenticationError, "認証完了に失敗しました: Invalid code")
+        }.to raise_error(Application::AuthenticationError, "Failed to complete authentication: Invalid code")
       end
     end
   end
@@ -75,7 +75,7 @@ RSpec.describe Application::AuthenticateUserUseCase do
 
         expect(result[:authenticated]).to be true
         expect(result[:token_file_exists]).to be true
-        expect(result[:message]).to eq("認証済みです")
+        expect(result[:message]).to eq("Authenticated")
         expect(result[:auth_url]).to be_nil
       end
     end
@@ -92,7 +92,7 @@ RSpec.describe Application::AuthenticateUserUseCase do
 
         expect(result[:authenticated]).to be false
         expect(result[:token_file_exists]).to be false
-        expect(result[:message]).to eq("認証が必要です。start_authを実行してください")
+        expect(result[:message]).to eq("Authentication required. Please run start_auth")
         expect(result[:auth_url]).to eq('https://oauth.example.com/auth')
       end
     end

@@ -4,7 +4,7 @@ require_relative '../../application/use_cases/authenticate_user_use_case'
 
 module InterfaceAdapters
   class StartAuthTool < BaseTool
-    description "Google Calendar認証を開始します"
+    description "Start Google Calendar authentication"
 
     input_schema(
       type: "object",
@@ -27,17 +27,17 @@ module InterfaceAdapters
           logger.debug "Auth URL: #{result[:auth_url]}"
 
           success_response({
-            message: "認証プロセスを開始します",
+            message: "Starting authentication process",
             auth_url: result[:auth_url],
             instructions: result[:instructions]
           })
         rescue Application::AuthenticationError => e
           logger.error "Authentication error: #{e.message}"
-          error_response("認証開始エラー: #{e.message}")
+          error_response("Authentication start error: #{e.message}")
         rescue => e
           logger.error "Unexpected error occurred: #{e.message}"
           logger.debug "Error details: #{e.backtrace&.first(5)&.join(', ')}"
-          error_response("認証開始時に予期しないエラーが発生しました")
+          error_response("An unexpected error occurred during authentication start")
         end
       end
     end

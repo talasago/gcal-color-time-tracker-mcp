@@ -28,28 +28,28 @@ module Infrastructure
         order_by: 'startTime'
       )
 
-      # Google API Event → Domain::CalendarEvent変換
+      # Convert Google API Event → Domain::CalendarEvent
       response.items.map { |api_event| convert_to_domain_event(api_event) }
     rescue Google::Apis::AuthorizationError, Application::AuthenticationRequiredError => e
-      raise Application::AuthenticationRequiredError, "認証エラー: #{e.message}"
+      raise Application::AuthenticationRequiredError, "Authentication error: #{e.message}"
     rescue Google::Apis::ClientError, Google::Apis::ServerError => e
-      raise Infrastructure::ExternalServiceError, "カレンダーAPIエラー: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "Calendar API error: #{e.message}"
     rescue => e
-      raise Infrastructure::ExternalServiceError, "カレンダーイベントの取得に失敗しました: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "Failed to fetch calendar events: #{e.message}"
     end
 
     # NOTE: TODO:
-    # 1. calendar_infoがnilになるケース: 通常は認証済みであれば発生しませんが、API仕様上は可能性があります
-    # . calendar_info.idがnilになるケース: カレンダー情報は取得できてもIDフィールドが空の場合があります
+    # 1. Cases where calendar_info becomes nil: Usually doesn't occur if authenticated, but possible per API spec
+    # 2. Cases where calendar_info.id becomes nil: Calendar info can be retrieved but ID field might be empty
     def get_user_email
       calendar_info = @service.get_calendar('primary')
       calendar_info.id
     rescue Google::Apis::AuthorizationError => e
-      raise Application::AuthenticationRequiredError, "認証エラー: #{e.message}"
+      raise Application::AuthenticationRequiredError, "Authentication error: #{e.message}"
     rescue Google::Apis::ClientError, Google::Apis::ServerError => e
-      raise Infrastructure::ExternalServiceError, "ユーザー情報の取得に失敗しました: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "Failed to get user information: #{e.message}"
     rescue => e
-      raise Infrastructure::ExternalServiceError, "ユーザーメール取得エラー: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "User email retrieval error: #{e.message}"
     end
 
     private
@@ -63,9 +63,9 @@ module Infrastructure
       begin
         credentials = @token_repository.load_credentials
       rescue => e
-        raise Infrastructure::ExternalServiceError, "認証情報の検証に失敗しました: #{e.message}"
+        raise Infrastructure::ExternalServiceError, "Failed to validate authentication credentials: #{e.message}"
       end
-      raise Application::AuthenticationRequiredError, "認証情報が見つかりません" unless credentials
+      raise Application::AuthenticationRequiredError, "Authentication credentials not found" unless credentials
 
       refresh_if_expired(credentials)
       credentials
@@ -77,15 +77,15 @@ module Infrastructure
       credentials.refresh!
       @token_repository.save_credentials(credentials)
     rescue Google::Apis::AuthorizationError => e
-      raise Application::AuthenticationRequiredError, "トークンのリフレッシュに失敗しました: #{e.message}"
+      raise Application::AuthenticationRequiredError, "Failed to refresh token: #{e.message}"
     rescue => e
-      raise Infrastructure::ExternalServiceError, "認証情報の保存に失敗しました: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "Failed to save authentication credentials: #{e.message}"
     end
 
     def set_authorization(credentials)
       @service.authorization = credentials
     rescue => e
-      raise Infrastructure::ExternalServiceError, "認証設定に失敗しました: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "Failed to set up authentication: #{e.message}"
     end
 
     def convert_to_domain_event(api_event)

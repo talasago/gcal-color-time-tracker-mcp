@@ -22,7 +22,7 @@ RSpec.shared_context 'authenticated user' do
     instance_double('Infrastructure::AuthManager').tap do |mock|
       allow(mock).to receive(:complete_auth).and_return({
         success: true,
-        message: "認証が完了しました"
+        message: "Authentication completed successfully"
       })
     end
   end

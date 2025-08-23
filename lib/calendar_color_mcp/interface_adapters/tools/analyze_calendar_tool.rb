@@ -8,22 +8,22 @@ require_relative '../../application/errors'
 
 module InterfaceAdapters
   class AnalyzeCalendarTool < BaseTool
-    description "指定期間のGoogleカレンダーイベントを色別に時間集計します。対象とする色や除外する色を指定できます。"
+    description "Analyze Google Calendar events by color for the specified period. You can specify target colors to include or exclude."
 
     input_schema(
       type: "object",
       properties: {
         start_date: {
           type: "string",
-          description: "開始日（YYYY-MM-DD形式）"
+          description: "Start date (YYYY-MM-DD format)"
         },
         end_date: {
           type: "string",
-          description: "終了日（YYYY-MM-DD形式）"
+          description: "End date (YYYY-MM-DD format)"
         },
         include_colors: {
           type: "array",
-          description: "集計対象の色（色ID(1-11)またはカラー名を指定）",
+          description: "Colors to include in analysis (specify color ID (1-11) or color name)",
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
@@ -33,7 +33,7 @@ module InterfaceAdapters
         },
         exclude_colors: {
           type: "array",
-          description: "集計除外の色（色ID(1-11)またはカラー名を指定）",
+          description: "Colors to exclude from analysis (specify color ID (1-11) or color name)",
           items: {
             oneOf: [
               { type: "integer", minimum: 1, maximum: 11 },
@@ -99,7 +99,7 @@ module InterfaceAdapters
         rescue => e
           logger.error "Unexpected error occurred: #{e.message}"
           logger.debug "Error details: #{e.backtrace&.first(5)&.join(', ')}"
-          error_response("予期しないエラーが発生しました: #{e.message}")
+          error_response("An unexpected error occurred: #{e.message}")
         end
       end
 

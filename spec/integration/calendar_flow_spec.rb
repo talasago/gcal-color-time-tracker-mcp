@@ -64,7 +64,7 @@ RSpec.describe 'Calendar Flow Integration', type: :integration do
             expect(analysis_content['success']).to be false
           end
           error_message = analysis_content['error'] || analysis_content['message'] || analysis_content['description']
-          expect(error_message).to include('認証が必要です')
+          expect(error_message).to include('Authentication required')
         end
       end
     end
@@ -117,7 +117,7 @@ RSpec.describe 'Calendar Flow Integration', type: :integration do
 
           # Should contain auth-related or token expiry error message
           error_message = analysis_content['error'] || analysis_content['message'] || analysis_content['description']
-          expect(error_message).to match(/Authorization failed|認証が必要です/)
+          expect(error_message).to match(/Authorization failed|Authentication required/)
         end
       end
     end

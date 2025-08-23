@@ -197,7 +197,7 @@ describe Infrastructure::GoogleCalendarRepository do
 
       it 'should raise AuthenticationRequiredError' do
         expect { repository.fetch_events(start_date, end_date) }
-          .to raise_error(Application::AuthenticationRequiredError, /認証情報が見つかりません/)
+          .to raise_error(Application::AuthenticationRequiredError, /Authentication credentials not found/)
       end
     end
 
@@ -232,7 +232,7 @@ describe Infrastructure::GoogleCalendarRepository do
 
         it 'should raise AuthenticationRequiredError' do
           expect { repository.fetch_events(start_date, end_date) }
-            .to raise_error(Application::AuthenticationRequiredError, /トークンのリフレッシュに失敗しました/)
+            .to raise_error(Application::AuthenticationRequiredError, /Failed to refresh token/)
         end
       end
     end
@@ -249,7 +249,7 @@ describe Infrastructure::GoogleCalendarRepository do
 
       it 'should raise AuthenticationRequiredError' do
         expect { repository.fetch_events(start_date, end_date) }
-          .to raise_error(Application::AuthenticationRequiredError, /認証エラー/)
+          .to raise_error(Application::AuthenticationRequiredError, /Authentication error/)
       end
     end
 

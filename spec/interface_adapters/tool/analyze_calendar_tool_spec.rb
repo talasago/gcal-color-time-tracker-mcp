@@ -56,7 +56,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
           .and_return(mock_use_case)
 
         allow(mock_use_case).to receive(:execute)
-          .and_raise(Application::AuthenticationRequiredError, "認証が必要です")
+          .and_raise(Application::AuthenticationRequiredError, "Authentication required")
 
         allow(mock_oauth_service).to receive(:generate_auth_url)
           .and_return('https://accounts.google.com/oauth/authorize?...')
@@ -72,7 +72,7 @@ RSpec.describe 'AnalyzeCalendarTool', type: :request do
 
         aggregate_failures do
           expect(content['success']).to be false
-          expect(content['error']).to include('認証が必要です')
+          expect(content['error']).to include('Authentication required')
           expect(content['auth_url']).to start_with('https://accounts.google.com')
         end
       end

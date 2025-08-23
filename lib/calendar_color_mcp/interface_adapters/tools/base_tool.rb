@@ -18,7 +18,7 @@ module InterfaceAdapters
         auth_manager = server_context&.dig(:auth_manager)
 
         if auth_manager.nil?
-          raise ArgumentError, "認証マネージャーが利用できません"
+          raise ArgumentError, "Authentication manager is not available"
         end
 
         auth_manager
@@ -29,7 +29,7 @@ module InterfaceAdapters
         token_manager = server_context&.dig(:token_manager)
 
         if token_manager.nil?
-          raise ArgumentError, "トークンマネージャーが利用できません"
+          raise ArgumentError, "Token manager is not available"
         end
 
         token_manager

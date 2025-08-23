@@ -29,7 +29,7 @@ module Infrastructure
       query_string = params.map { |k, v| "#{k}=#{CGI.escape(v.to_s)}" }.join('&')
       "https://accounts.google.com/o/oauth2/auth?#{query_string}"
     rescue => e
-      raise Infrastructure::ExternalServiceError, "OAuth URL生成に失敗しました: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "Failed to generate OAuth URL: #{e.message}"
     end
 
     def exchange_code_for_token(auth_code)
@@ -37,7 +37,7 @@ module Infrastructure
       @oauth_client.fetch_access_token!
       @oauth_client
     rescue => e
-      raise Infrastructure::ExternalServiceError, "トークン交換に失敗しました: #{e.message}"
+      raise Infrastructure::ExternalServiceError, "Failed to exchange token: #{e.message}"
     end
 
     private

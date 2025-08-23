@@ -5,14 +5,14 @@ require_relative '../../application/errors'
 
 module InterfaceAdapters
   class CompleteAuthTool < BaseTool
-    description "Google認証コードを使用して認証を完了します"
+    description "Complete authentication using Google authorization code"
 
     input_schema(
       type: "object",
       properties: {
         auth_code: {
           type: "string",
-          description: "Googleから取得した認証コード"
+          description: "Authorization code obtained from Google"
         }
       },
       required: ["auth_code"]
@@ -34,14 +34,14 @@ module InterfaceAdapters
           success_response(result)
         rescue Application::ValidationError => e
           logger.error "Validation error: #{e.message}"
-          error_response("入力エラー: #{e.message}")
+          error_response("Input error: #{e.message}")
         rescue Application::AuthenticationError => e
           logger.error "Authentication error: #{e.message}"
-          error_response("認証エラー: #{e.message}")
+          error_response("Authentication error: #{e.message}")
         rescue => e
           logger.error "Unexpected error occurred: #{e.message}"
           logger.debug "Error details: #{e.backtrace&.first(5)&.join(', ')}"
-          error_response("認証完了時に予期しないエラーが発生しました")
+          error_response("An unexpected error occurred during authentication completion")
         end
       end
     end

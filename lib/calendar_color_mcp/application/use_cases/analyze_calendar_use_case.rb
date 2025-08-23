@@ -32,12 +32,12 @@ module Application
 
     def ensure_authenticated
       unless @token_repository.token_exist?
-        raise Application::AuthenticationRequiredError, "認証が必要です"
+        raise Application::AuthenticationRequiredError, "Authentication required"
       end
     end
 
     def validate_and_parse_dates(start_date, end_date)
-      # Application層での直接日付バリデーション（YAGNI原則に従った設計）
+      # Direct date validation at Application layer (following YAGNI principle)
       if start_date.nil? || end_date.nil?
         raise Application::InvalidParameterError, "Both start date and end date must be provided"
       end
@@ -60,11 +60,11 @@ module Application
       begin
         @calendar_repository.get_user_email
       rescue Application::AuthenticationRequiredError => e
-        # 認証エラーの場合は再発生させる
+        # Re-raise authentication errors
         raise e
       rescue
-        # TODO:: 認証エラー時もフィルタリングで処理されるか知りたい
-        # その他のエラー時はnilを返す（フィルタリング処理側で適切に処理される）
+        # TODO: Need to check if authentication errors are also handled by filtering
+        # For other errors, return nil (will be handled appropriately by filtering layer)
         nil
       end
     end
