@@ -13,16 +13,6 @@ module InterfaceAdapters
         @logger ||= CalendarColorMCP::LoggerManager.instance
       end
 
-      def extract_auth_manager(context)
-        server_context = context[:server_context]
-        auth_manager = server_context&.dig(:auth_manager)
-
-        if auth_manager.nil?
-          raise ArgumentError, "Authentication manager is not available"
-        end
-
-        auth_manager
-      end
 
       def extract_token_manager(context)
         server_context = context[:server_context]

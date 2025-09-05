@@ -2,32 +2,8 @@ require 'spec_helper'
 require_relative '../../../lib/calendar_color_mcp/interface_adapters/tools/base_tool'
 
 RSpec.describe InterfaceAdapters::BaseTool do
-  let(:auth_manager) { double('auth_manager') }
-  let(:server_context) { { auth_manager: auth_manager } }
+  let(:server_context) { {} }
   let(:context) { { server_context: server_context } }
-
-  describe '.extract_auth_manager' do
-    subject { described_class.send(:extract_auth_manager, context) }
-
-    context 'when server_context contains auth_manager' do
-      it { is_expected.to eq(auth_manager) }
-    end
-
-    context 'when server_context is nil' do
-      let(:context) { { server_context: nil } }
-      it { expect { subject }.to raise_error(ArgumentError, "Authentication manager is not available") }
-    end
-
-    context 'when auth_manager is nil' do
-      let(:server_context) { { auth_manager: nil } }
-      it { expect { subject }.to raise_error(ArgumentError, "Authentication manager is not available") }
-    end
-
-    context 'when server_context is missing' do
-      let(:context) { {} }
-      it { expect { subject }.to raise_error(ArgumentError, "Authentication manager is not available") }
-    end
-  end
 
   describe '.success_response' do
     subject { described_class.send(:success_response, data) }
