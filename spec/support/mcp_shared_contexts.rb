@@ -18,20 +18,11 @@ RSpec.shared_context 'authenticated user' do
     end
   end
 
-  let(:mock_auth_manager) do
-    instance_double('Infrastructure::AuthManager').tap do |mock|
-      allow(mock).to receive(:complete_auth).and_return({
-        success: true,
-        message: "Authentication completed successfully"
-      })
-    end
-  end
 
   let(:server_context) {
     {
       oauth_service: mock_oauth_service,
-      token_repository: mock_token_repository,
-      auth_manager: mock_auth_manager
+      token_repository: mock_token_repository
     }
   }
 end

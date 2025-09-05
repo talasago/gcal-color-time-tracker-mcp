@@ -13,12 +13,6 @@ RSpec.describe 'CompleteAuthTool', type: :request do
     context 'when auth code is valid (mocked)' do
       include_context 'authenticated user'
 
-      before do
-        allow(mock_auth_manager).to receive(:complete_auth).and_return({
-          success: true,
-          message: "Authentication completed successfully"
-        })
-      end
 
       it 'handles valid auth code' do
 
