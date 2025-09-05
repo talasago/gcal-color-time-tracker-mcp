@@ -104,7 +104,7 @@ chmod +x bin/calendar-color-mcp
 {
   "mcpServers": {
     "calendar-color-mcp": {
-      "command": "/path/to/calendar-color-mcp/bin/calendar-color-mcp",
+      "command": "/path/to/gcal-color-time-tracker-mcp/bin/calendar-color-mcp",
       "env": {
         "GOOGLE_CLIENT_ID": "your_google_client_id",
         "GOOGLE_CLIENT_SECRET": "your_google_client_secret",
