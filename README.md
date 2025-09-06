@@ -115,6 +115,31 @@ chmod +x bin/calendar-color-mcp
 }
 ```
 
+#### For Windows Applications
+
+If you are using a Windows client application, we recommend configuring it as follows:
+
+```json
+{
+  "mcpServers": {
+    "calendar-color-mcp": {
+      "command": "wsl",
+      "args": [
+        "-d",
+        "Ubuntu",
+        "bash",
+        "-c",
+        "export GOOGLE_CLIENT_ID='your_google_client_id' && export GOOGLE_CLIENT_SECRET='your_google_client_secret' && export DEBUG='false' && /path/to/.rbenv/shims/ruby /path/to/gcal-color-time-tracker-mcp/bin/calendar-color-mcp"
+      ]
+    }
+  }
+}
+```
+
+This configuration uses WSL (Windows Subsystem for Linux) to run the MCP server. Make sure to:
+- Replace `your_google_client_id` and `your_google_client_secret` with your actual credentials
+- Update the paths `/path/to/.rbenv/shims/ruby` and `/path/to/gcal-color-time-tracker-mcp/bin/calendar-color-mcp` to match your actual installation paths
+
 ### MCP Tool Usage Examples
 
 #### Calendar Analysis (Participated Events Only)
