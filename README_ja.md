@@ -115,6 +115,31 @@ chmod +x bin/calendar-color-mcp
 }
 ```
 
+#### Windowsアプリケーションの場合
+
+Windowsアプリケーションのクライアントを使用する場合は、以下のような設定を推奨します：
+
+```json
+{
+  "mcpServers": {
+    "calendar-color-mcp": {
+      "command": "wsl",
+      "args": [
+        "-d",
+        "Ubuntu",
+        "bash",
+        "-c",
+        "export GOOGLE_CLIENT_ID='your_google_client_id' && export GOOGLE_CLIENT_SECRET='your_google_client_secret' && export DEBUG='false' && /path/to/.rbenv/shims/ruby /path/to/gcal-color-time-tracker-mcp/bin/calendar-color-mcp"
+      ]
+    }
+  }
+}
+```
+
+この設定では、WSL（Windows Subsystem for Linux）を使用してMCPサーバーを実行します。以下を確認してください：
+- `your_google_client_id` と `your_google_client_secret` を実際の認証情報に置き換える
+- `/path/to/.rbenv/shims/ruby` と `/path/to/gcal-color-time-tracker-mcp/bin/calendar-color-mcp` を実際のインストールパスに更新する
+
 ### MCPツール使用例
 
 #### カレンダー分析（参加イベントのみ）
